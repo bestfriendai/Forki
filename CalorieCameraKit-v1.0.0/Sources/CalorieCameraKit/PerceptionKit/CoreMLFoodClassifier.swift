@@ -12,12 +12,8 @@ import Vision
 import UIKit
 #endif
 
-// Match the protocol from the kit:
-public struct ClassResult {
-    public let label: String       // canonicalized name you’ll use for priors
-    public let confidence: Double  // 0.0 ... 1.0
-    public let rawTopK: [(String, Double)]
-}
+// Use ClassResult from Segmentation.swift
+// Note: CoreMLFoodClassifier uses the Segmentation protocol types
 
 public final class CoreMLFoodClassifier: Classifier {
     private let vnModel: VNCoreMLModel
@@ -28,8 +24,11 @@ public final class CoreMLFoodClassifier: Classifier {
         self.topK = topK
     }
 
-    /// Classify a single food instance. If you don't have a mask yet, we classify the whole image.
-    public func classify(instance: FoodInstanceMask) async throws -> ClassResult {
+    /// Classify a single food instance with frames for temporal coherence
+    public func classify(
+        instance: FoodInstanceMask,
+        frames: [FrameSample]
+    ) async throws -> ClassResult {
         // Prefer CGImage → Vision handles resizing/cropping internally.
         if let cgImage = cgImage(from: instance) {
             return try classify(cgImage: cgImage)
@@ -41,7 +40,7 @@ public final class CoreMLFoodClassifier: Classifier {
         }
 
         // Final fallback
-        return ClassResult(label: "unknown", confidence: 0.0, rawTopK: [])
+        return ClassResult(topLabel: "unknown", confidence: 0.0, mixture: nil)
     }
 
     // MARK: - Core classification paths
@@ -69,12 +68,24 @@ public final class CoreMLFoodClassifier: Classifier {
     private func makeResult(from request: VNRequest) -> ClassResult {
         guard let results = request.results as? [VNClassificationObservation],
               let best = results.first else {
-            return ClassResult(label: "unknown", confidence: 0.0, rawTopK: [])
+            return ClassResult(topLabel: "unknown", confidence: 0.0, mixture: nil)
         }
 
-        let top = Array(results.prefix(topK)).map { ($0.identifier, Double($0.confidence)) }
+        let top = Array(results.prefix(topK))
         let canonical = Self.canonicalize(best.identifier)
-        return ClassResult(label: canonical, confidence: Double(best.confidence), rawTopK: top)
+        
+        // Build mixture dictionary from top-K results
+        var mixture: [String: Double] = [:]
+        for result in top {
+            let key = Self.canonicalize(result.identifier)
+            mixture[key] = Double(result.confidence)
+        }
+        
+        return ClassResult(
+            topLabel: canonical,
+            confidence: Double(best.confidence),
+            mixture: mixture.count > 1 ? mixture : nil
+        )
     }
 
     // MARK: - Helpers
@@ -87,40 +98,28 @@ public final class CoreMLFoodClassifier: Classifier {
             .replacingOccurrences(of: "-", with: "_")
     }
 
-    /// Try to get a CGImage from the instance.
-    /// Expectation: your FoodInstanceMask should (at least) let us reach the RGB image bytes.
+    /// Try to get a CGImage from the instance mask.
+    /// Uses the maskImage from FoodInstanceMask (Segmentation.swift type)
     private func cgImage(from instance: FoodInstanceMask) -> CGImage? {
-        #if canImport(UIKit)
-        if let data = instance.rgbImageData,
-           let ui = UIImage(data: data),
-           let cg = ui.cgImage ?? ui.precomposedCGImage() {
-            return cg
-        }
-        #endif
-        return nil
+        // Use the maskImage directly (it's a CGImage)
+        return instance.maskImage
     }
 
-    /// As a fallback, make a pixel buffer from the full image.
+    /// As a fallback, make a pixel buffer from the mask image.
     private func pixelBuffer(from instance: FoodInstanceMask) throws -> CVPixelBuffer {
         #if canImport(UIKit)
-        guard
-            let data = instance.rgbImageData,
-            let ui = UIImage(data: data),
-            let cg = ui.cgImage ?? ui.precomposedCGImage()
-        else {
-            throw NSError(domain: "CoreMLFoodClassifier", code: -10, userInfo: [NSLocalizedDescriptionKey: "Bad image data"])
-        }
-
-        let width = cg.width
-        let height = cg.height
+        // Convert mask CGImage to CVPixelBuffer
+        let maskImage = instance.maskImage
+        let width = maskImage.width
+        let height = maskImage.height
 
         var pb: CVPixelBuffer?
         let attrs: [CFString: Any] = [
             kCVPixelBufferCGImageCompatibilityKey: true,
             kCVPixelBufferCGBitmapContextCompatibilityKey: true
         ]
-        CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA, attrs as CFDictionary, &pb)
-        guard let pixelBuffer = pb else {
+        let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA, attrs as CFDictionary, &pb)
+        guard status == kCVReturnSuccess, let pixelBuffer = pb else {
             throw NSError(domain: "CoreMLFoodClassifier", code: -11, userInfo: [NSLocalizedDescriptionKey: "Failed to allocate pixel buffer"])
         }
 
@@ -139,7 +138,7 @@ public final class CoreMLFoodClassifier: Classifier {
             throw NSError(domain: "CoreMLFoodClassifier", code: -12, userInfo: [NSLocalizedDescriptionKey: "Context creation failed"])
         }
 
-        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+        ctx.draw(maskImage, in: CGRect(x: 0, y: 0, width: width, height: height))
         return pixelBuffer
         #else
         throw NSError(domain: "CoreMLFoodClassifier", code: -13, userInfo: [NSLocalizedDescriptionKey: "UIKit not available"])

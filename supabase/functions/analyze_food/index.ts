@@ -267,37 +267,124 @@ async function analyzeMenuPath(imageData: string): Promise<AnalysisItem> {
 }
 
 async function analyzeGeometryPath(imageData: string): Promise<AnalysisItem> {
-  const prompt = `Analyze this food image and estimate calories based on visual density and volume. Return JSON format (macros MUST be per 100 grams of edible portion):
-  {
-    "label": "Food description",
-    "estimatedCalories": number,
-    "density": {
-      "mu": mean_density_value,
-      "sigma": standard_deviation
-    },
-    "kcalPerG": {
-      "mu": mean_calories_per_gram,
-      "sigma": standard_deviation
-    },
-    "confidence": number between 0 and 1,
-    "macros": { // per 100g
-      "proteinG": number,
-      "carbsG": number,
-      "fatG": number
+  console.log('[analyzeGeometryPath] Starting OpenAI API call...')
+  
+  const prompt = `You are a food identification and nutrition analysis expert. Analyze this food image and provide a DETAILED, DESCRIPTIVE name for the food item(s) visible.
+
+CRITICAL INSTRUCTIONS FOR LABEL:
+1. If multiple foods are visible, create a descriptive name that includes ALL visible foods (e.g., "Mixed Fruit Plate (Apple, Kiwi, and Pears)", "Mixed Salad with Vegetables and Dressing", "Chicken Rice Bowl with Vegetables")
+2. If it's a single food item, use its specific name (e.g., "Apple", "Chicken Breast", "Rice Bowl")
+3. Be descriptive and specific - include details like preparation method, accompaniments, or ingredients when visible
+4. Do NOT use generic terms like "food", "meal", "dish", or "home-cooked food"
+5. Use proper title case (capitalize important words)
+
+Return a JSON object with this exact structure:
+{
+  "label": "Descriptive food name (e.g., 'Mixed Fruit Plate (Apple, Kiwi, and Pears)', 'Mixed Salad with Vegetables and Dressing', 'Chicken Rice Bowl', 'Grilled Salmon with Vegetables')",
+  "estimatedCalories": number (estimated total calories for the visible portion),
+  "density": {
+    "mu": number (density in g/mL, typically 0.7-1.2 for most foods),
+    "sigma": number (uncertainty, typically 0.1-0.2)
+  },
+  "kcalPerG": {
+    "mu": number (calories per gram, typically 1.0-4.0),
+    "sigma": number (uncertainty, typically 0.1-0.5)
+  },
+  "confidence": number between 0 and 1 (how confident you are in the identification),
+  "macros": {
+    "proteinG": number (grams of protein per 100g),
+    "carbsG": number (grams of carbs per 100g),
+    "fatG": number (grams of fat per 100g)
+  }
+}
+
+EXAMPLES OF GOOD LABELS:
+- "Mixed Fruit Plate (Apple, Kiwi, and Pears)"
+- "Mixed Salad with Vegetables and Dressing"
+- "Chicken Rice Bowl with Vegetables"
+- "Grilled Salmon with Roasted Vegetables"
+- "Pasta with Tomato Sauce and Meatballs"
+
+Return ONLY valid JSON, no additional text or explanation`
+  
+  let result: string
+  try {
+    result = await analyzeWithOpenAI(imageData, prompt)
+    console.log('[analyzeGeometryPath] OpenAI API call succeeded, response length:', result?.length || 0)
+    console.log('[analyzeGeometryPath] Raw OpenAI response (first 200 chars):', result?.substring(0, 200) || 'empty')
+  } catch (openaiError) {
+    console.error('[analyzeGeometryPath] OpenAI API call failed:', openaiError)
+    console.error('[analyzeGeometryPath] Error type:', openaiError?.constructor?.name || 'Unknown')
+    console.error('[analyzeGeometryPath] Error message:', openaiError?.message || 'No message')
+    
+    // If OpenAI API fails, return a fallback that indicates the failure
+    return {
+      label: 'Unknown Food',
+      confidence: 0.3,
+      calories: 200,
+      sigmaCalories: 100,
+      path: 'geometry',
+      evidence: ['Analyzer', 'OpenAI', 'Geometry', 'API_Failed'],
+      macros: { proteinG: 0, carbsG: 0, fatG: 0 },
+      priors: {
+        density: { mu: 0.85, sigma: 0.13 },
+        kcalPerG: { mu: 1.30, sigma: 0.26 }
+      }
     }
   }
   
-  Focus on accuracy and only return valid JSON.`
-  
-  const result = await analyzeWithOpenAI(imageData, prompt)
-  
   try {
-    const parsed = JSON.parse(result)
+    // Clean the response - remove markdown code blocks if present
+    let cleaned = result.trim()
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '')
+    }
+    
+    const parsed = JSON.parse(cleaned)
+    
+    // Validate and sanitize the label
+    let foodLabel = parsed.label || 'Unknown Food'
+    if (typeof foodLabel !== 'string') {
+      foodLabel = String(foodLabel)
+    }
+    // Remove generic terms and ensure it's a specific food name
+    foodLabel = foodLabel.trim()
+    if (foodLabel.toLowerCase() === 'food' || 
+        foodLabel.toLowerCase() === 'meal' || 
+        foodLabel.toLowerCase() === 'dish' ||
+        foodLabel.toLowerCase() === 'home-cooked food' ||
+        foodLabel.toLowerCase() === 'geometry') {
+      foodLabel = 'Unknown Food'
+    }
+    
+    // PRESERVE proper title case from OpenAI (don't force lowercase on rest of string)
+    // Only ensure first letter is uppercase if the entire string is lowercase
+    if (foodLabel.length > 0) {
+      // Check if the entire string is lowercase (needs capitalization)
+      if (foodLabel === foodLabel.toLowerCase()) {
+        // Convert to title case: capitalize first letter of each word
+        foodLabel = foodLabel.split(' ').map(word => {
+          if (word.length === 0) return word
+          // Handle words with parentheses: "apple" -> "Apple", "(apple" -> "(Apple"
+          if (word.startsWith('(')) {
+            return '(' + word.substring(1, 2).toUpperCase() + word.substring(2)
+          }
+          return word.substring(0, 1).toUpperCase() + word.substring(1)
+        }).join(' ')
+      }
+      // If it already has mixed case (like "Mixed Fruit Plate"), preserve it as-is
+    }
+    
+    console.log(`[analyzeGeometryPath] Parsed label: "${foodLabel}", calories: ${parsed.estimatedCalories}`)
+    console.log(`[analyzeGeometryPath] ✅ SUCCESS - OpenAI returned valid food label: "${foodLabel}"`)
+    
     return {
-      label: parsed.label || 'Home-cooked Food',
-      confidence: parsed.confidence || 0.6,
+      label: foodLabel,
+      confidence: Math.max(0, Math.min(1, parsed.confidence || 0.6)),
       calories: parsed.estimatedCalories || 300,
-      sigmaCalories: Math.round(parsed.estimatedCalories * 0.2) || 60,
+      sigmaCalories: Math.round((parsed.estimatedCalories || 300) * 0.2) || 60,
       path: 'geometry',
       evidence: ['Analyzer', 'OpenAI', 'Geometry'],
       macros: parsed.macros || { proteinG: 0, carbsG: 0, fatG: 0 },
@@ -306,15 +393,49 @@ async function analyzeGeometryPath(imageData: string): Promise<AnalysisItem> {
         kcalPerG: parsed.kcalPerG || { mu: 1.30, sigma: 0.26 }
       }
     }
-  } catch (error) {
-    // Fallback if JSON parsing fails
+  } catch (parseError) {
+    console.error('[analyzeGeometryPath] JSON parsing failed:', parseError)
+    console.error('[analyzeGeometryPath] Raw response:', result)
+    console.error('[analyzeGeometryPath] Error type:', parseError?.constructor?.name || 'Unknown')
+    console.error('[analyzeGeometryPath] Error message:', parseError?.message || 'No message')
+    
+    // Try to extract label from raw response as fallback
+    let extractedLabel = 'Unknown Food'
+    // Improved regex to capture labels with parentheses and special characters
+    const labelMatch = result.match(/"label"\s*:\s*"([^"]+)"/i) || 
+                      result.match(/label["\s:]+"([^"]+)"/i) ||
+                      result.match(/label["\s:]+([a-zA-Z\s\(\)\-,]+)/i)
+    if (labelMatch && labelMatch[1]) {
+      extractedLabel = labelMatch[1].trim()
+      if (extractedLabel.length > 0 && 
+          !['food', 'meal', 'dish', 'geometry'].includes(extractedLabel.toLowerCase())) {
+        // Preserve title case if already present, otherwise capitalize first letter of each word
+        if (extractedLabel === extractedLabel.toLowerCase()) {
+          extractedLabel = extractedLabel.split(' ').map(word => {
+            if (word.length === 0) return word
+            if (word.startsWith('(')) {
+              return '(' + word.substring(1, 2).toUpperCase() + word.substring(2)
+            }
+            return word.substring(0, 1).toUpperCase() + word.substring(1)
+          }).join(' ')
+        }
+        // If it already has mixed case, preserve it
+      } else {
+        extractedLabel = 'Unknown Food'
+      }
+    }
+    
+    console.log(`[analyzeGeometryPath] Using fallback label: "${extractedLabel}"`)
+    console.log(`[analyzeGeometryPath] ⚠️ WARNING - JSON parsing failed, using extracted label: "${extractedLabel}"`)
+    
+    // Fallback if JSON parsing fails - but still return something useful
     return {
-      label: 'Home-cooked Food',
+      label: extractedLabel,
       confidence: 0.5,
       calories: 300,
       sigmaCalories: 60,
       path: 'geometry',
-      evidence: ['Analyzer', 'OpenAI', 'Geometry'],
+      evidence: ['Analyzer', 'OpenAI', 'Geometry', 'Fallback'],
       macros: { proteinG: 0, carbsG: 0, fatG: 0 },
       priors: {
         density: { mu: 0.85, sigma: 0.13 },
@@ -413,6 +534,19 @@ serve(async (req) => {
         break
     }
 
+    // Log the analysis result for debugging
+    console.log(`[analyze_food] Analysis complete: label="${analysisResult.label}", calories=${analysisResult.calories}, path=${analysisResult.path}`)
+    console.log(`[analyze_food] ⚠️ CHECK LABEL: Is it generic? "${analysisResult.label}"`)
+    
+    // Check if label is generic
+    const lowerLabel = analysisResult.label.toLowerCase().trim()
+    const isGeneric = ['unknown food', 'food', 'meal', 'dish', 'geometry', 'home-cooked food'].includes(lowerLabel)
+    if (isGeneric) {
+      console.log(`[analyze_food] ⚠️⚠️⚠️ WARNING: Label "${analysisResult.label}" is GENERIC - OpenAI may have failed or returned fallback`)
+    } else {
+      console.log(`[analyze_food] ✅ Label "${analysisResult.label}" looks valid`)
+    }
+    
     const response: Response = {
       items: [analysisResult],
       meta: {
@@ -420,6 +554,9 @@ serve(async (req) => {
         latencyMs: Date.now() - startTime
       }
     }
+
+    // Log the full response being sent
+    console.log(`[analyze_food] Sending response:`, JSON.stringify(response, null, 2))
 
     return new Response(
       JSON.stringify(response),

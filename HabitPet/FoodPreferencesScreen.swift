@@ -1,6 +1,6 @@
 //
 //  FoodPreferencesScreen.swift
-//  HabitPet
+//  Forki
 //
 //  Created by Janice C on 9/16/25.
 //
@@ -48,24 +48,16 @@ struct FoodPreferencesScreen: View {
     
     var body: some View {
         ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(hex: "#34d399"),
-                    Color(hex: "#14b8a6"),
-                    Color(hex: "#06b6d4")
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            ForkiTheme.backgroundGradient
+                .ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: 20) {
                     // Dietary Preferences
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Dietary Preferences")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundColor(ForkiTheme.textPrimary)
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                             ForEach(dietaryPreferences) { pref in
                                 PreferenceButton(option: pref, isSelected: selected.contains(pref.id), compact: true) {
@@ -78,13 +70,18 @@ struct FoodPreferencesScreen: View {
                     // Plate drop zone
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.15))
+                            .fill(ForkiTheme.panelBackground)
                             .frame(width: 180, height: 180)
+                            .overlay(
+                                Circle()
+                                    .stroke(ForkiTheme.borderPrimary, lineWidth: 3)
+                            )
                             .overlay(
                                 Text("🍽️")
                                     .font(.system(size: 52))
                                     .opacity(droppedFoods.isEmpty ? 0.3 : 0)
                             )
+                            .shadow(color: ForkiTheme.borderPrimary.opacity(0.12), radius: 14, x: 0, y: 8)
                         
                         ForEach(Array(droppedFoods.enumerated()), id: \.offset) { index, food in
                             Text(food.icon)
@@ -118,11 +115,11 @@ struct FoodPreferencesScreen: View {
                     // Food Categories
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Food Categories")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundColor(ForkiTheme.textPrimary)
                         Text("Drag your favorite foods into the plate above")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 14, design: .rounded))
+                            .foregroundColor(ForkiTheme.textSecondary)
                             .padding(.bottom, 4)
                         
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
@@ -131,12 +128,19 @@ struct FoodPreferencesScreen: View {
                                     Text(food.icon)
                                         .font(.system(size: 28))
                                     Text(food.name)
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundColor(.white)
+                                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                                        .foregroundColor(ForkiTheme.textPrimary)
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(8)
-                                .background(selected.contains(food.id) ? Color.white.opacity(0.25) : Color.white.opacity(0.1))
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(selected.contains(food.id) ? ForkiTheme.surface.opacity(0.8) : ForkiTheme.surface.opacity(0.4))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(selected.contains(food.id) ? ForkiTheme.borderPrimary : ForkiTheme.borderPrimary.opacity(0.3), lineWidth: selected.contains(food.id) ? 2 : 1.5)
+                                )
                                 .cornerRadius(12)
                                 .draggable(food.id) { // ✅ Clean emoji-only drag preview
                                     Text(food.icon)
@@ -157,21 +161,23 @@ struct FoodPreferencesScreen: View {
                             withAnimation { currentScreen += 1 }
                         } label: {
                             Text("Continue (\(foodSelectedCount) selected)")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.system(size: 20, weight: .heavy, design: .rounded))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
-                                .foregroundColor(Color.teal)
-                                .background(Color.white)
-                                .clipShape(Capsule())
-                                .shadow(color: .black.opacity(0.3), radius: 6, x: 0, y: 4)
+                                .foregroundColor(.white)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(ForkiTheme.actionLogFood)
+                                )
+                                .shadow(color: ForkiTheme.actionShadow, radius: 12, x: 0, y: 6)
                         }
                         
                         Button {
                             withAnimation { currentScreen += 1 }
                         } label: {
                             Text("Skip for now")
-                                .font(.system(size: 14))
-                                .foregroundColor(.white.opacity(0.7))
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundColor(ForkiTheme.textSecondary)
                                 .underline()
                         }
                     }
@@ -276,16 +282,18 @@ struct PreferenceButton: View {
             HStack(spacing: 6) {
                 Text(option.icon)
                 Text(option.name)
-                    .font(.system(size: compact ? 12 : 14, weight: .medium))
-                    .foregroundColor(.white)
+                    .font(.system(size: compact ? 12 : 14, weight: .medium, design: .rounded))
+                    .foregroundColor(ForkiTheme.textPrimary)
             }
             .padding(compact ? 6 : 10)
             .frame(maxWidth: .infinity)
-            .background(isSelected ? Color.white.opacity(0.25) : Color.white.opacity(0.1))
-            .cornerRadius(8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isSelected ? ForkiTheme.surface.opacity(0.8) : ForkiTheme.surface.opacity(0.4))
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? Color.white : Color.white.opacity(0.2), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(isSelected ? ForkiTheme.borderPrimary : ForkiTheme.borderPrimary.opacity(0.3), lineWidth: isSelected ? 2 : 1.5)
             )
         }
     }

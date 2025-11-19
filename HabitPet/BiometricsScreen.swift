@@ -1,6 +1,6 @@
 //
 //  BiometricsScreen.swift
-//  HabitPet
+//  Forki
 //
 //  Created by Janice C on 9/16/25.
 //
@@ -48,53 +48,48 @@ struct BiometricsScreen: View {
 
     var body: some View {
         ZStack {
-            background.ignoresSafeArea()
-
-            VStack(spacing: 20) {
-                progressDots
-
-                if step == 0 {
-                    ageGenderHeader
-                    ageGenderContent
-                } else if step == 1 {
-                    heightHeader
-                    heightContent
-                } else {
-                    weightHeader
-                    weightContent
+            ForkiTheme.background
+                .ignoresSafeArea()
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    progressDots
+                    
+                    VStack(spacing: 24) {
+                        if step == 0 {
+                            ageGenderHeader
+                            ageGenderContent
+                        } else if step == 1 {
+                            heightHeader
+                            heightContent
+                        } else {
+                            weightHeader
+                            weightContent
+                        }
+                    }
+                    .forkiPanel()
+                    
+                    Button {
+                        handleNext()
+                    } label: {
+                        Text(step < 2 ? "Continue" : "Finish")
+                    }
+                    .buttonStyle(ForkiPrimaryButtonStyle())
+                    .disabled(!isStepValid)
+                    .opacity(isStepValid ? 1 : 0.5)
+                    
+                    Button {
+                        handleNext(skip: true)
+                    } label: {
+                        Text("Skip for now")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    }
+                    .buttonStyle(ForkiSecondaryButtonStyle())
                 }
-
-                Spacer(minLength: 12)
-
-                // Continue button
-                Button {
-                    handleNext() // 👈 Explicit call fixes the @MainActor type mismatch
-                } label: {
-                    Text(step < 2 ? "Continue" : "Finish")
-                        .font(.system(size: 20, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .foregroundColor(.gray.opacity(0.9))
-                        .background(Color.white)
-                        .clipShape(Capsule())
-                        .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
-                }
-                .disabled(!isStepValid)
-                .opacity(isStepValid ? 1 : 0.5)
-                .padding(.horizontal, 40)
-
-                Button {
-                    handleNext(skip: true)
-                } label: {
-                    Text("Skip for now")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white.opacity(0.7))
-                        .underline()
-                }
-                .padding(.bottom, 8)
+                .frame(maxWidth: 460)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 36)
             }
-            .frame(maxWidth: 360)
-            .padding(.horizontal, 24)
         }
         .onAppear {
             // If user already has a gender, map it to our local enum
@@ -118,23 +113,15 @@ struct BiometricsScreen: View {
         }
     }
 
-    private var background: LinearGradient {
-        switch step {
-        case 0: return LinearGradient(gradient: Gradient(colors: ageGradient), startPoint: .topLeading, endPoint: .bottomTrailing)
-        case 1: return LinearGradient(gradient: Gradient(colors: heightGradient), startPoint: .topLeading, endPoint: .bottomTrailing)
-        default: return LinearGradient(gradient: Gradient(colors: weightGradient), startPoint: .topLeading, endPoint: .bottomTrailing)
-        }
-    }
-
     private var progressDots: some View {
         HStack(spacing: 8) {
             ForEach(0..<3, id: \.self) { i in
                 Circle()
-                    .fill(i <= step ? Color.white : Color.white.opacity(0.3))
+                    .fill(i <= step ? ForkiTheme.borderPrimary : ForkiTheme.borderPrimary.opacity(0.25))
                     .frame(width: 8, height: 8)
             }
         }
-        .padding(.top, 16)
+        .padding(.top, 12)
     }
 
     // MARK: - Age + Gender (Step 0)
@@ -146,13 +133,13 @@ struct BiometricsScreen: View {
                 .padding(.bottom, 4)
 
             Text("How old are you?")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.white)
+                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                .foregroundColor(ForkiTheme.textPrimary)
                 .multilineTextAlignment(.center)
 
             Text("This helps us personalize your nutrition plan")
-                .font(.system(size: 16))
-                .foregroundColor(.white.opacity(0.8))
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundColor(ForkiTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 16)
@@ -169,8 +156,8 @@ struct BiometricsScreen: View {
             VStack(alignment: .leading, spacing: 12) {
                 // Title as a question, plus some breathing room under it
                 Text("Which gender describes you best?")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(ForkiTheme.textPrimary)
                     .padding(.bottom, 6) // extra spacing under title
 
                 // Pills
@@ -202,13 +189,13 @@ struct BiometricsScreen: View {
                 .padding(.bottom, 4)
 
             Text("What's your height?")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.white)
+                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                .foregroundColor(ForkiTheme.textPrimary)
                 .multilineTextAlignment(.center)
 
             Text("We'll use this to calculate your nutritional needs")
-                .font(.system(size: 16))
-                .foregroundColor(.white.opacity(0.8))
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundColor(ForkiTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 16)
@@ -216,7 +203,7 @@ struct BiometricsScreen: View {
 
     private var heightContent: some View {
         VStack(spacing: 20) {
-            HabitPetView(
+            ForkiView(
                 size: 200,
                 heightScale: $userData.heightScale,
                 widthScale: $userData.weightScale
@@ -257,13 +244,13 @@ struct BiometricsScreen: View {
                 .padding(.bottom, 4)
 
             Text("What's your current weight?")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.white)
+                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                .foregroundColor(ForkiTheme.textPrimary)
                 .multilineTextAlignment(.center)
 
             Text("This helps us track your progress")
-                .font(.system(size: 16))
-                .foregroundColor(.white.opacity(0.8))
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundColor(ForkiTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 16)
@@ -271,7 +258,7 @@ struct BiometricsScreen: View {
 
     private var weightContent: some View {
         VStack(spacing: 20) {
-            HabitPetView(
+            ForkiView(
                 size: 200,
                 heightScale: $userData.heightScale,
                 widthScale: $userData.weightScale
@@ -323,20 +310,20 @@ private struct GenderPill: View {
             HStack(spacing: 6) {
                 Text(choice.icon)
                 Text(choice.label.capitalized)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 14)
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(isSelected ? Color.white : Color.white.opacity(0.15))
+                    .fill(isSelected ? ForkiTheme.surface : ForkiTheme.surface.opacity(0.6))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.white.opacity(isSelected ? 0.0 : 0.25), lineWidth: 1)
+                    .stroke(ForkiTheme.borderPrimary.opacity(isSelected ? 0.6 : 0.25), lineWidth: 1.5)
             )
-            .foregroundColor(isSelected ? Color(hex: "#0f172a") : .white)
-            .shadow(color: .black.opacity(isSelected ? 0.2 : 0), radius: 6, x: 0, y: 3)
+            .foregroundColor(isSelected ? ForkiTheme.textPrimary : ForkiTheme.textSecondary)
+            .shadow(color: ForkiTheme.borderPrimary.opacity(isSelected ? 0.18 : 0), radius: 6, x: 0, y: 3)
             .animation(.easeInOut(duration: 0.2), value: isSelected)
         }
     }
@@ -355,19 +342,23 @@ struct AgeSelectorView: View {
         GeometryReader { geo in
             VStack(spacing: 16) {
                 Text("\(currentValue)")
-                    .font(.system(size: 64, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(.system(size: 64, weight: .heavy, design: .rounded))
+                    .foregroundColor(ForkiTheme.textPrimary)
                     .frame(height: 100)
                     .padding()
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(0.15))
-                            .shadow(radius: 6)
+                            .fill(ForkiTheme.surface)
+                            .overlay(
+                                Circle()
+                                    .stroke(ForkiTheme.borderPrimary, lineWidth: 3)
+                            )
+                            .shadow(color: ForkiTheme.borderPrimary.opacity(0.12), radius: 10, x: 0, y: 6)
                     )
 
                 Text("Swipe up or down to set your age")
-                    .font(.system(size: 16))
-                    .foregroundColor(.white.opacity(0.7))
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundColor(ForkiTheme.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
@@ -407,22 +398,22 @@ struct DialPicker: View {
     var body: some View {
         VStack(spacing: 14) {
             Text(formatter(value))
-                .font(.system(size: 44, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(.system(size: 44, weight: .heavy, design: .rounded))
+                .foregroundColor(ForkiTheme.textPrimary)
                 .frame(height: 70)
 
             GeometryReader { geo in
                 ZStack {
                     Rectangle()
-                        .fill(Color.white.opacity(0.15))
+                        .fill(ForkiTheme.surface.opacity(0.7))
                         .frame(height: 4)
 
                     let t = (value - range.lowerBound) / (range.upperBound - range.lowerBound)
                     let xPos = t * geo.size.width
                     Circle()
-                        .fill(Color.white)
+                        .fill(ForkiTheme.actionOrange)
                         .frame(width: 32, height: 32)
-                        .shadow(radius: 3)
+                        .shadow(color: ForkiTheme.actionShadow, radius: 6, x: 0, y: 4)
                         .position(x: xPos.clamped(to: 16...(geo.size.width - 16)),
                                   y: geo.size.height / 2)
                         .gesture(

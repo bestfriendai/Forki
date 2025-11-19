@@ -1,0 +1,489 @@
+alfredo pasta
+almond butter
+almond milk
+almond milk yogurt
+almonds
+apple pie
+apple slices
+apples
+arepas
+artichokes
+asian chicken salad
+asparagus
+avocado
+avocado salad
+avocado sandwich
+avocado toast
+bacon
+bagel with cream cheese
+bagels
+banana bread
+banana chips
+banana split
+bananas
+barley
+basmati rice
+bbq ribs
+beef brisket
+beef burrito
+beef chili
+beef jerky
+beef meatballs
+beef pho
+beef ramen
+beef ribeye
+beef shawarma
+beef sirloin
+beef steak
+beef stew meat
+beef taco
+beef taco salad
+beets
+bell peppers
+bento box
+beyond burger
+bibimbap
+biryani
+black bean soup
+black beans
+black tea
+blackberries
+blt
+blueberries
+bok choy
+bratwurst
+breakfast burrito
+breakfast sandwich
+breakfast sausage
+breakfast tacos
+broccoli
+brown rice
+brownies
+brussels sprouts
+burrito beef
+burrito bowl
+burrito chicken
+butter
+butter chicken
+cabbage
+caesar salad
+calamari
+california roll
+cantaloupe
+cappuccino
+caprese salad
+carne asada
+carrots
+cashews
+cauliflower
+celery
+cereal
+chai latte
+cheese cheddar
+cheese crackers
+cheese mozzarella
+cheese slices
+cheese sticks
+cheese swiss
+cheeseburger patty
+cheesecake
+cherries
+cherry tomatoes
+chia pudding
+chicken alfredo
+chicken breast baked
+chicken breast grilled
+chicken breast rotisserie
+chicken burrito bowl
+chicken caesar salad
+chicken curry
+chicken drumstick
+chicken enchilada
+chicken fajitas
+chicken fried rice
+chicken kebab
+chicken liver
+chicken marsala
+chicken meatballs
+chicken noodle soup
+chicken nuggets frozen
+chicken pasta
+chicken patties frozen
+chicken pho
+chicken pot pie
+chicken quesadilla
+chicken ramen
+chicken salad
+chicken salad deli
+chicken sandwich
+chicken sausage
+chicken shawarma
+chicken stir fry strips
+chicken tenders
+chicken teriyaki
+chicken thigh
+chicken thigh roasted
+chicken tikka
+chicken tikka masala
+chicken tortilla soup
+chicken wings
+chicken wrap
+chickpea salad
+chickpeas cooked
+chocolate cake
+chocolate milk
+chocolate pudding
+churros
+cinnamon rolls
+clam chowder
+club sandwich
+cobb salad
+coconut milk
+coconut water
+cod fillet
+coffee
+coleslaw
+cookies
+corn
+cottage cheese
+couscous
+crab cakes
+crackers
+cream cheese
+cucumbers
+cupcakes
+curry chicken
+curry vegetables
+dark chocolate
+dark meat chicken
+dates
+diet soda
+dinner roll
+donuts
+dried blueberries
+dried cranberries
+dried mango
+dumplings
+edamame
+edamame snack
+egg salad sandwich
+egg whites
+eggplant
+empanada
+enchiladas
+energy drink
+falafel
+falafel plate
+falafel wrap
+farro
+feta cheese
+fettuccine
+figs
+fish sticks
+fish tacos
+french toast
+fried eggs
+fried rice
+frozen berries
+frozen burrito
+frozen chicken breast
+frozen chicken nuggets
+frozen curry
+frozen dumplings
+frozen enchiladas
+frozen fried rice
+frozen fruit
+frozen lasagna
+frozen mac cheese
+frozen mango
+frozen noodle bowl
+frozen pancakes
+frozen pizza
+frozen pot pie
+frozen ramen
+frozen rice bowl
+frozen salmon
+frozen shepherds pie
+frozen stir fry
+frozen tikka masala
+frozen udon bowl
+frozen vegetable medley
+frozen vegetables
+frozen waffles
+frozen yogurt
+fruit cup
+fruit salad
+fruit snacks
+fruit sorbet
+garden salad
+gluten free pasta
+gnocchi
+goat cheese
+granola
+granola bar
+granola bowl
+grapefruit
+grapes
+greek salad
+green beans
+green onions
+green tea
+grilled cheese
+grilled salmon
+ground beef 85
+ground beef 90
+ground chicken
+guacamole
+guava
+gyoza
+gyro beef strips
+gyro plate
+gyro wrap
+half and half
+ham sandwich
+ham slices
+hamburger patty
+hard boiled eggs
+hash browns
+heat and eat curry
+heavy cream
+honeydew
+hot dog
+hummus
+ice cream
+ice cream sandwich
+iced tea
+impossible burger
+italian sausage
+jalapeno
+jasmine rice
+juice apple
+juice cranberry
+juice grape
+juice orange
+kale
+kale salad
+katsu chicken
+katsu pork
+kefir
+kidney beans
+kimchi
+kimchi fried rice
+kiwi
+kombucha
+korean bbq beef bulgogi
+lasagna
+latte
+lemon
+lemonade
+lentil salad
+lentil soup
+lentils cooked
+lettuce
+lime
+mac cheese
+macaroni
+mackerel canned
+mandarins
+mango
+margarine
+margherita pizza
+matcha latte
+meat lasagna
+meatball sub
+meatloaf
+microwave meal
+milk 2
+milk chocolate
+milk whole
+milkshake
+mixed greens
+mixed veggie stir fry
+mochi ice cream
+muffins
+mushrooms
+mussels
+naan
+nashville hot chicken
+nectarines
+nicoise salad
+nuts mixed
+oat milk
+oatmeal
+oatmeal bowl
+omelette
+onions
+oranges
+overnight oats
+pad thai
+pancakes
+papaya
+parfait
+parmesan
+passion fruit
+pasta salad
+pasta with meat sauce
+pasta with tomato sauce
+peaches
+peanut butter
+peanut butter toast
+pears
+peas
+penne pasta
+pepperoni
+pepperoni pizza
+pesto pasta
+pho
+pickles
+pineapple
+pinto beans
+pistachios
+pita bread
+pita sandwich
+plums
+poke bowl
+poke bowl salad
+poke bowl salmon
+poke bowl tuna
+pomegranate seeds
+popcorn
+popcorn chicken
+pork carnitas
+pork chop
+pork dumplings
+pork fried rice
+pork sausage
+pork tenderloin
+potato chips
+potatoes
+poutine
+pretzels
+protein bar
+protein chips
+protein oats
+protein pancakes
+protein shake
+protein yogurt
+pudding
+pulled pork
+pumpkin
+pumpkin pie
+quesadilla
+quinoa
+quinoa salad
+radish
+raisins
+ramen
+ramen noodles
+raspberries
+ravioli
+red onions
+refried beans
+rice cakes
+rice noodles
+rice pudding
+ricotta
+roast beef sandwich
+roasted vegetables
+romaine lettuce
+rotisserie chicken leg
+salami
+salmon fillet
+salsa
+sardines canned
+sauerkraut
+sausage scramble
+scrambled eggs
+seaweed
+seaweed snacks
+seitan
+shawarma plate
+shawarma wrap
+shrimp boiled
+shrimp fried rice
+shrimp scampi
+shrimp stir fry
+silken tofu
+skim milk
+smoked salmon
+smoothie
+smoothie blend frozen
+smoothie bowl
+soba noodles
+soda
+sour cream
+sourdough bread
+southwest salad
+soy curls
+soy milk
+soy yogurt
+spaghetti
+sparkling water
+spinach
+spinach salad
+sports drink
+spring mix
+spring rolls
+squash
+steel cut oats
+strawberries
+strawberry yogurt
+sushi bowl
+sushi salmon roll
+sushi tuna roll
+sweet corn
+sweet potatoes
+sweet sour chicken
+taco bowl
+tacos
+tamales
+tempeh
+tempura shrimp
+teriyaki chicken bowl
+tilapia
+tiramisu
+tofu firm
+tofu salad
+tofu scramble
+tofu stir fry
+tomatoes
+tortilla chips
+tortillas corn
+tortillas flour
+trail mix
+tuna canned
+tuna salad
+tuna sandwich
+tuna wrap
+turkey bacon
+turkey sandwich
+turkey wrap
+turnips
+tv dinner
+udon noodles
+vanilla cake
+vanilla yogurt
+vegan chicken strips
+vegan meatballs
+vegan sausage
+vegetable curry
+vegetable soup
+veggie burger patty
+veggie chili
+veggie sandwich
+veggie straws
+veggie tacos
+waffles
+walnuts
+water
+watermelon
+wheat bread
+whipped cream
+white bread
+white rice
+whole wheat pasta
+yogurt bowl
+yogurt covered pretzels
+yogurt greek
+yogurt plain
+zucchini

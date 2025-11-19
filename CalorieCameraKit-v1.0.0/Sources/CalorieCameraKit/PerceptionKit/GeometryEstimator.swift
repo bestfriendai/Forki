@@ -67,69 +67,20 @@ public final class GeometryEstimator {
         }
 
         // Calculate volume from depth map
-        let depths = depthData.depthMap.map(Double.init).filter { $0 > 0 } // Only valid depths
-        guard !depths.isEmpty else { return fallbackEstimate() }
-        
+        let depths = depthData.depthMap.map(Double.init)
         let sorted = depths.sorted()
         let count = sorted.count
-        
-        // Find foreground (closest 40% of pixels) - this should be the food
-        let foregroundEndIndex = Int(Double(count) * 0.4)
-        let foregroundDepthMax = sorted[min(foregroundEndIndex, count - 1)]
-        
-        // Food pixels are the closest 40% (assuming food is on a plate/table, closer than background)
-        var foodDepths: [Double] = []
-        for depth in depths {
-            if depth <= foregroundDepthMax {
-                foodDepths.append(depth)
-            }
-        }
-        
-        guard foodDepths.count > 100 else {
-            return fallbackEstimate()
-        }
-        
-        let foodPixelCount = foodDepths.count
-        let foodDepthSum = foodDepths.reduce(0, +)
-        
-        // Average depth of food region (in meters)
-        let avgFoodDepth = foodDepthSum / Double(foodPixelCount)
-        
-        // Calculate real-world pixel size at this depth
-        // Formula: pixel_size = (sensor_pixel_size × depth) / focal_length
-        // Typical iPhone: sensor width ~6mm, pixel size ~1.5μm, focal ~4mm
-        let pixelSizeAtDepth: Double
-        if let intrinsics = frame.cameraIntrinsics {
-            // Focal length in pixels, convert to mm assuming typical sensor size
-            let avgFocalPixels = Double((intrinsics.focalLength.x + intrinsics.focalLength.y) / 2)
-            let imageWidth = Double(intrinsics.imageSize.x)
-            // Approximate: sensor width 6mm, so pixel size ~6mm / image_width
-            let sensorPixelSize = 6e-3 / imageWidth
-            // Focal length in mm ≈ (focal_pixels × sensor_width) / image_width
-            let focalLengthMM = (avgFocalPixels * 6e-3) / imageWidth
-            pixelSizeAtDepth = (sensorPixelSize * avgFoodDepth) / (focalLengthMM / 1000.0)
-        } else {
-            // Fallback: typical iPhone camera
-            pixelSizeAtDepth = (1.5e-6 * avgFoodDepth) / 4e-3
-        }
-        let pixelAreaMetersSquared = pixelSizeAtDepth * pixelSizeAtDepth
-        
-        // Food area = number of food pixels × area per pixel
-        let foodAreaMetersSquared = Double(foodPixelCount) * pixelAreaMetersSquared
-        
-        // Height estimate: difference between closest and farthest food pixels
-        let minFoodDepth = foodDepths.min() ?? avgFoodDepth
-        let maxFoodDepth = foodDepths.max() ?? avgFoodDepth
-        let heightMeters = max(0.01, maxFoodDepth - minFoodDepth) // At least 1cm
-        
-        // Volume = area × height
-        let volumeMetersCubed = foodAreaMetersSquared * heightMeters
-        
-        // Convert m³ → mL (1 m³ = 1,000,000 mL), clamp to reasonable range
-        // Much more conservative: cap at 2L (2000mL) for typical food portions
-        let volumeML = min(max(10.0, volumeMetersCubed * 1_000_000.0), 2_000.0)
-        
-        NSLog("📐 Geometry: foodPixels=\(foodPixelCount), avgDepth=\(String(format: "%.3f", avgFoodDepth))m, area=\(String(format: "%.4f", foodAreaMetersSquared))m², height=\(String(format: "%.3f", heightMeters))m, volumeML=\(String(format: "%.1f", volumeML))")
+        let foregroundDepth = sorted[max(0, Int(Double(count) * 0.1) - 1)]
+        let backgroundDepth = sorted[min(count - 1, Int(Double(count) * 0.9))]
+        let heightMeters = max(0.0, backgroundDepth - foregroundDepth)
+
+        // Convert depth map area into rough real-world area (square meters).
+        let pixelArea = parameters.pixelAreaEstimate
+        let areaMetersSquared = Double(depthData.width * depthData.height) * pixelArea
+        let volumeMetersCubed = heightMeters * areaMetersSquared
+
+        // Convert m³ → mL (1 m³ = 1,000,000 mL)
+        let volumeML = max(10.0, volumeMetersCubed * 1_000_000.0)
 
         // Estimate volume uncertainty from depth measurement variability
         let volumeSigmaML = volumeML * parameters.relativeVolumeSigma

@@ -1,6 +1,6 @@
 //
 //  GoalSettingScreen.swift
-//  HabitPet
+//  Forki
 //
 //  Created by Janice C on 9/16/25.
 //
@@ -16,73 +16,80 @@ struct GoalSettingScreen: View {
     
     private let goals: [GoalOption] = [
         GoalOption(
-            id: "slim",
-            title: "Slim",
-            subtitle: "Lose weight",
-            avatar: "🏃‍♀️",
-            description: "Focus on creating a caloric deficit"
+            id: "Build healthier eating habits",
+            title: "Build healthier eating habits",
+            subtitle: "Improve your nutrition",
+            avatar: "🌱",
+            description: "Focus on building consistent, healthy eating patterns"
         ),
         GoalOption(
-            id: "content",
-            title: "Content",
-            subtitle: "Maintain weight",
+            id: "Lose weight",
+            title: "Lose weight",
+            subtitle: "Create a caloric deficit",
+            avatar: "🏃‍♀️",
+            description: "Focus on creating a caloric deficit for weight loss"
+        ),
+        GoalOption(
+            id: "Maintain my weight",
+            title: "Maintain my weight",
+            subtitle: "Balance nutrition",
             avatar: "🧘‍♀️",
             description: "Maintain current weight with balanced nutrition"
         ),
         GoalOption(
-            id: "strong",
-            title: "Strong",
-            subtitle: "Gain weight",
+            id: "Gain weight / build muscle",
+            title: "Gain weight / build muscle",
+            subtitle: "Build strength",
             avatar: "💪",
             description: "Build muscle with increased protein intake"
+        ),
+        GoalOption(
+            id: "Boost energy & reduce stress",
+            title: "Boost energy & reduce stress",
+            subtitle: "Improve well-being",
+            avatar: "⚡",
+            description: "Enhance energy levels and reduce stress around food"
         )
     ]
     
     var body: some View {
         ZStack {
-            background
-            content
-        }
-    }
-    
-    // MARK: Background
-    private var background: some View {
-        LinearGradient(
-            gradient: Gradient(colors: [
-                Color(hex: "#6366f1"), // indigo-500
-                Color(hex: "#a855f7"), // purple-500
-                Color(hex: "#ec4899")  // pink-500
-            ]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
-    }
-    
-    // MARK: Content
-    private var content: some View {
-        VStack(spacing: 24) {
-            header
-            goalOptions
-            if !selectedGoal.isEmpty {
-                durationSelector
+            ForkiTheme.background
+                .ignoresSafeArea()
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    VStack(spacing: 24) {
+                        header
+                        goalOptions
+                        if !selectedGoal.isEmpty {
+                            durationSelector
+                        }
+                    }
+                    .forkiPanel()
+                    
+                    continueButton
+                        .buttonStyle(ForkiPrimaryButtonStyle())
+                        .disabled(selectedGoal.isEmpty)
+                        .opacity(selectedGoal.isEmpty ? 0.6 : 1)
+                }
+                .frame(maxWidth: 460)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 36)
             }
-            continueButton
         }
-        .frame(maxWidth: 360)
-        .padding(.horizontal, 24)
     }
     
     // MARK: Sections
     private var header: some View {
         VStack(spacing: 8) {
             Text("What's your goal?")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.white)
+                .font(.system(size: 24, weight: .heavy, design: .rounded))
+                .foregroundColor(ForkiTheme.textPrimary)
                 .multilineTextAlignment(.center)
             Text("Choose the body you want to achieve")
-                .font(.system(size: 16))
-                .foregroundColor(.white.opacity(0.8))
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundColor(ForkiTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
     }
@@ -103,11 +110,11 @@ struct GoalSettingScreen: View {
         VStack(spacing: 16) {
             VStack(spacing: 4) {
                 Text("I want to reach this goal in:")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(ForkiTheme.textPrimary)
                 Text("\(goalDuration) months")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .foregroundColor(ForkiTheme.highlightText)
             }
             
             Slider(
@@ -118,40 +125,36 @@ struct GoalSettingScreen: View {
                 in: 1...12,
                 step: 1
             )
-            .tint(.white)
+            .tint(ForkiTheme.actionOrange)
             
             HStack {
                 Text("1 month")
                 Spacer()
                 Text("12 months")
             }
-            .font(.system(size: 12))
-            .foregroundColor(.white.opacity(0.6))
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .foregroundColor(ForkiTheme.textSecondary.opacity(0.8))
         }
-        .padding()
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(20)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(ForkiTheme.surface.opacity(0.9))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(ForkiTheme.borderPrimary.opacity(0.4), lineWidth: 2)
+                )
+        )
     }
     
     private var continueButton: some View {
         Button {
-            if !selectedGoal.isEmpty {
-                userData.goal = selectedGoal
-                userData.goalDuration = goalDuration
-                withAnimation(.easeInOut) { currentScreen += 1 }
-            }
+            guard !selectedGoal.isEmpty else { return }
+            userData.goal = selectedGoal
+            userData.goalDuration = goalDuration
+            withAnimation(.easeInOut) { currentScreen += 1 }
         } label: {
             Text("Continue")
-                .font(.system(size: 20, weight: .semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .foregroundColor(Color.purple)
-                .background(Color.white)
-                .clipShape(Capsule())
-                .shadow(color: .black.opacity(0.3), radius: 6, x: 0, y: 4)
         }
-        .disabled(selectedGoal.isEmpty)
-        .opacity(selectedGoal.isEmpty ? 0.5 : 1)
     }
 }
 
@@ -166,14 +169,14 @@ struct GoalCard: View {
                 .font(.system(size: 28))
             VStack(alignment: .leading, spacing: 4) {
                 Text(goal.title)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(ForkiTheme.textPrimary)
                 Text(goal.subtitle)
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.8))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundColor(ForkiTheme.textSecondary)
                 Text(goal.description)
-                    .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.6))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundColor(ForkiTheme.textSecondary.opacity(0.8))
                     .padding(.top, 2)
             }
             Spacer()
@@ -181,12 +184,13 @@ struct GoalCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(isSelected ? Color.white.opacity(0.2) : Color.white.opacity(0.1))
+                .fill(isSelected ? ForkiTheme.surface : ForkiTheme.surface.opacity(0.7))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(isSelected ? Color.white : Color.white.opacity(0.2), lineWidth: 2)
+                .stroke(isSelected ? ForkiTheme.borderPrimary : ForkiTheme.borderPrimary.opacity(0.3), lineWidth: 2)
         )
+        .shadow(color: ForkiTheme.borderPrimary.opacity(isSelected ? 0.2 : 0.08), radius: 10, x: 0, y: 6)
     }
 }
 

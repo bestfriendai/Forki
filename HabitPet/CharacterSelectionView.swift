@@ -1,6 +1,6 @@
 //
 //  CharacterSelectionView.swift
-//  HabitPet
+//  Forki
 //
 //  Created by Janice C on 9/23/25.
 //
@@ -17,68 +17,75 @@ struct CharacterSelectionView: View {
     
     var body: some View {
         ZStack {
-            // Background gradient
-            backgroundGradient
+            ForkiTheme.background
+                .ignoresSafeArea()
             
-            ScrollView {
-                VStack(spacing: 30) {
-                    // Header
-                    VStack(spacing: 16) {
-                        Text("Choose Your Character!")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 28) {
+                    VStack(spacing: 28) {
+                        // Header
+                        VStack(spacing: 16) {
+                            Text("Choose Your Character!")
+                                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                                .foregroundColor(ForkiTheme.textPrimary)
+                                .multilineTextAlignment(.center)
+                            
+                            Text("Select a companion for your health journey")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(ForkiTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                        }
                         
-                        Text("Select a companion for your health journey")
-                            .font(.system(size: 18))
-                            .foregroundColor(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.top, 20)
-                    
-                    // Character Grid
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 20) {
-                        ForEach(characters) { character in
-                            CharacterCard(
-                                character: character,
-                                isSelected: selectedCharacter == character
-                            ) {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    selectedCharacter = character
+                        // Character Grid
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 18) {
+                            ForEach(characters) { character in
+                                CharacterCard(
+                                    character: character,
+                                    isSelected: selectedCharacter == character
+                                ) {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        selectedCharacter = character
+                                    }
                                 }
                             }
                         }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Character Preview
-                    VStack(spacing: 16) {
-                        Text("Preview")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
                         
-                        CharacterPreviewView(character: selectedCharacter)
-                            .frame(height: 200)
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(20)
-                            .padding(.horizontal)
+                        // Character Preview
+                        VStack(spacing: 16) {
+                            Text("Preview")
+                                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                .foregroundColor(ForkiTheme.textSecondary)
+                            
+                            CharacterPreviewView(character: selectedCharacter)
+                                .frame(height: 220)
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                        .fill(ForkiTheme.surface)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                                .stroke(ForkiTheme.borderPrimary, lineWidth: 3)
+                                        )
+                                )
+                                .shadow(color: ForkiTheme.borderPrimary.opacity(0.15), radius: 14, x: 0, y: 10)
+                        }
+                        
+                        // Character Description
+                        VStack(spacing: 12) {
+                            Text(selectedCharacter.displayName)
+                                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                                .foregroundColor(ForkiTheme.textPrimary)
+                            
+                            Text(selectedCharacter.description)
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .foregroundColor(ForkiTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
                     }
+                    .forkiPanel()
                     
-                    // Character Description
                     VStack(spacing: 12) {
-                        Text(selectedCharacter.displayName)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.white)
-                        
-                        Text(selectedCharacter.description)
-                            .font(.system(size: 16))
-                            .foregroundColor(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
-                    
-                    // Continue Button
-                    VStack(spacing: 16) {
                         Button {
                             userData.selectedCharacter = selectedCharacter
                             withAnimation(.easeInOut) {
@@ -86,54 +93,22 @@ struct CharacterSelectionView: View {
                             }
                         } label: {
                             Text("Continue with \(selectedCharacter.displayName)")
-                                .font(.system(size: 20, weight: .semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .foregroundColor(.white)
-                                .background(buttonGradient)
-                                .clipShape(Capsule())
-                                .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
                         }
-                        .buttonStyle(PressScaleButtonStyle())
-                        .padding(.horizontal)
+                        .buttonStyle(ForkiPrimaryButtonStyle())
                         
                         Text("Your character will evolve based on your health progress!")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundColor(ForkiTheme.textSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                     }
-                    .padding(.bottom, 30)
+                    .padding(.bottom, 24)
                 }
+                .frame(maxWidth: 520)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 32)
             }
         }
-    }
-    
-    // MARK: - Background Gradient
-    private var backgroundGradient: some View {
-        LinearGradient(
-            gradient: Gradient(colors: [
-                Color(hex: "#0f172a"),
-                Color(hex: "#1e293b"),
-                Color(hex: "#0f4c75"),
-                Color(hex: "#3730a3"),
-                Color(hex: "#1e40af"),
-                Color(hex: "#0891b2"),
-                Color(hex: "#0d9488"),
-                Color(hex: "#059669")
-            ]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
-    }
-    
-    private var buttonGradient: some View {
-        LinearGradient(
-            gradient: Gradient(colors: [Color(hex: "#0891b2"), Color(hex: "#0d9488")]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
     }
 }
 
@@ -151,31 +126,32 @@ struct CharacterCard: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                 
                 // Character Name
                 Text(character.displayName)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(ForkiTheme.textPrimary)
                     .multilineTextAlignment(.center)
                 
                 // Selection Indicator
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.green)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(ForkiTheme.actionOrange)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 20)
+            .padding(.vertical, 22)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected ? Color.white.opacity(0.2) : Color.white.opacity(0.1))
+                    .fill(isSelected ? ForkiTheme.surface : ForkiTheme.surface.opacity(0.7))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(isSelected ? Color.white : Color.white.opacity(0.3), lineWidth: 2)
+                            .stroke(isSelected ? ForkiTheme.borderPrimary : ForkiTheme.borderPrimary.opacity(0.3), lineWidth: 2)
                     )
             )
+            .shadow(color: ForkiTheme.borderPrimary.opacity(isSelected ? 0.2 : 0.08), radius: 10, x: 0, y: 6)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -192,8 +168,7 @@ struct CharacterPreviewView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(height: 180)
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(20)
+                .padding(16)
             
             // Character info overlay
             VStack {
@@ -202,13 +177,19 @@ struct CharacterPreviewView: View {
                     Text(character.emoji)
                         .font(.system(size: 20))
                     Text(character.displayName)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(ForkiTheme.textPrimary)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(Color.black.opacity(0.3))
-                .cornerRadius(12)
+                .background(
+                    Capsule()
+                        .fill(ForkiTheme.surface.opacity(0.85))
+                        .overlay(
+                            Capsule()
+                                .stroke(ForkiTheme.borderPrimary.opacity(0.4), lineWidth: 1)
+                        )
+                )
                 .padding(.bottom, 8)
             }
         }
@@ -219,7 +200,7 @@ struct CharacterPreviewView: View {
 struct PressScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 1.05 : 1.0)
+            .scaleEffect(configuration.isPressed ? 1.03 : 1.0)
             .animation(.easeInOut(duration: 0.18), value: configuration.isPressed)
     }
 }

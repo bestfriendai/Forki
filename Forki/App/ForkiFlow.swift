@@ -33,7 +33,14 @@ struct ForkiFlow: View {
                     userData.notifications = convertedUserData.notifications
                     userData.selectedCharacter = convertedUserData.selectedCharacter
                     
-                    // Persona data already saved via applySnapshot in WellnessSnapshotScreen
+                    // CRITICAL: Save basic info to UserDefaults to ensure persistence
+                    userData.saveBasicInfo()
+                    
+                    // Calculate and apply wellness snapshot to ensure BMI, bodyType, metabolism, and eatingPattern are set
+                    let snapshot = WellnessSnapshotCalculator.calculateSnapshot(from: onboardingData)
+                    userData.applySnapshot(snapshot)
+                    
+                    // Persona data already saved via applySnapshot above
                     // Just ensure it's set (should already be set from WellnessSnapshot)
                     let personaID = onboardingData.personaIDValue
                     if personaID > 0 {
@@ -41,9 +48,25 @@ struct ForkiFlow: View {
                         UserDefaults.standard.set(personaID, forKey: "hp_personaID")
                     }
                     
+                    // CRITICAL: Initialize nutrition state with clearMeals: true for NEW users
+                    // This ensures they start with a clean slate (no meals, default avatar state)
+                    if personaID > 0 && snapshot.recommendedCalories > 0 {
+                        userData.nutrition.initializeFromSnapshot(
+                            personaID: personaID,
+                            recommendedCalories: snapshot.recommendedCalories,
+                            clearMeals: true // NEW USER - start fresh with no meals
+                        )
+                    }
+                    
                     // Save onboarding completion and sign-in status
                     UserDefaults.standard.set(true, forKey: "hp_isSignedIn")
                     UserDefaults.standard.set(true, forKey: "hp_hasOnboarded")
+                    // Mark that user just completed onboarding to show camera tutorial
+                    UserDefaults.standard.justCompletedOnboarding = true
+                    #if DEBUG
+                    print("📸 [ForkiFlow] Onboarding completed - set justCompletedOnboarding = true")
+                    print("📸 [ForkiFlow] hasShownCameraTutorial = \(UserDefaults.standard.hasShownCameraTutorial)")
+                    #endif
                     
                     // Save user data to Supabase
                     Task {
@@ -173,18 +196,46 @@ struct ForkiFlow: View {
                                     UserDefaults.standard.set(loadedUserData.personaID, forKey: "hp_personaID")
                                     UserDefaults.standard.set(loadedUserData.recommendedCalories, forKey: "hp_recommendedCalories")
                                     
+                                    // CRITICAL: Save basic info to UserDefaults to ensure persistence
+                                    loadedUserData.saveBasicInfo()
+                                    
                                     // Initialize nutrition state with persona and calories to restore avatar state
+                                    // clearMeals: false - preserve existing meal logs (will load from Supabase)
                                     if loadedUserData.personaID > 0 && loadedUserData.recommendedCalories > 0 {
                                         nutrition.initializeFromSnapshot(
                                             personaID: loadedUserData.personaID,
-                                            recommendedCalories: loadedUserData.recommendedCalories
+                                            recommendedCalories: loadedUserData.recommendedCalories,
+                                            clearMeals: false // Don't clear - load from Supabase
                                         )
+                                    }
+                                    
+                                    // Load meal logs from Supabase to restore user's meal history
+                                    // This will calculate avatar state and battery life from the loaded meals
+                                    Task {
+                                        await nutrition.loadMealLogsFromSupabase()
+                                        
+                                        // After loading meal logs, update avatar state if needed (time-based checks)
+                                        await MainActor.run {
+                                            // Update avatar state based on current time and loaded meal logs
+                                            // This handles time-based checks (e.g., 6pm starving) and ensures
+                                            // avatar state is correct based on current conditions
+                                            nutrition.updateAvatarStateIfNeeded()
+                                            
+                                            NSLog("✅ [ForkiFlow] Session restored - meals: \(nutrition.loggedMeals.count), calories: \(nutrition.caloriesCurrent)/\(nutrition.caloriesGoal), avatar: \(nutrition.avatarState.rawValue), battery: \(nutrition.avatarEnergyPercentage)%")
+                                        }
                                     }
                                 }
                             }
                         } catch {
                             print("Failed to load user data from Supabase: \(error)")
-                            // Continue with local data
+                            // Continue with local data - try to load meal logs anyway
+                            Task {
+                                await nutrition.loadMealLogsFromSupabase()
+                                await MainActor.run {
+                                    nutrition.loadAvatarState()
+                                    nutrition.updateAvatarStateIfNeeded()
+                                }
+                            }
                         }
                     }
                 }

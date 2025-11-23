@@ -151,23 +151,18 @@ struct RestaurantListView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 16)
-                    .padding(.bottom, 80) // Add bottom padding to account for nav bar
+                    .padding(.bottom, 160) // Add bottom padding to account for nav bar
                 }
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                // Bottom Navigation Bar - docked to bottom, unaffected by keyboard
+                
+                Spacer(minLength: 0)
+                
+                // Bottom Navigation Bar - docked to bottom safe area
                 universalNavigationBar
                     .padding(.horizontal, 12)
                     .padding(.bottom, 2)
                     .background(ForkiTheme.panelBackground.ignoresSafeArea(edges: .bottom))
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
-            .overlay(
-                // Purple outline around the container
-                RoundedRectangle(cornerRadius: 0, style: .continuous)
-                    .stroke(ForkiTheme.borderPrimary, lineWidth: 4)
-                    .ignoresSafeArea()
-            )
         }
         .sheet(isPresented: Binding(
             get: { selectedRestaurant != nil },

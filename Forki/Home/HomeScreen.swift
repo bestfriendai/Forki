@@ -47,6 +47,8 @@ struct HomeScreen: View {
     }
     
     // Initialize avatar from snapshot if needed
+    // NOTE: This should only be called for existing users, not new users
+    // New users should have already initialized via OnboardingFlow
     private func initializeAvatarIfNeeded() {
         guard UserDefaults.standard.bool(forKey: "hp_avatarNeedsInitialization") else {
             return
@@ -56,10 +58,12 @@ struct HomeScreen: View {
         let recommendedCalories = UserDefaults.standard.integer(forKey: "hp_recommendedCalories")
         
         // Only initialize if we have valid data
+        // clearMeals: false - this is for existing users restoring state
         if personaID > 0 && recommendedCalories > 0 {
             nutrition.initializeFromSnapshot(
                 personaID: personaID,
-                recommendedCalories: recommendedCalories
+                recommendedCalories: recommendedCalories,
+                clearMeals: false // Don't clear - preserve existing meal logs for existing users
             )
         }
         
@@ -123,12 +127,6 @@ struct HomeScreen: View {
                     .padding(.bottom, 2)
                     .background(ForkiTheme.panelBackground.ignoresSafeArea(edges: .bottom))
             }
-            .overlay(
-                // Purple outline around the container
-                RoundedRectangle(cornerRadius: 0, style: .continuous)
-                    .stroke(ForkiTheme.borderPrimary, lineWidth: 4)
-                    .ignoresSafeArea()
-            )
         }
         .onReceive(SparkleEventBus.shared.sparklePublisher) { event in
             if event == .purpleConfetti {
@@ -141,6 +139,11 @@ struct HomeScreen: View {
         .onAppear {
             // Initialize avatar from snapshot if needed (after onboarding)
             initializeAvatarIfNeeded()
+            // Force avatar state update based on current nutrition data
+            // This ensures avatar state is correct when screen appears
+            nutrition.updateAvatarStateIfNeeded()
+            // Check for daily challenge notifications (morning refresh)
+            NotificationEngine.shared.sendDailyChallengeIfNeeded()
         }
         // AI Camera
         .sheet(isPresented: $showAICamera) {
@@ -454,12 +457,27 @@ struct HomeScreen: View {
                         // and navigate to OnboardingFlow from ForkiFlow
                     },
                     onSignOut: {
-                        // Sign out user - clear local session state only
+                        // Sign out user - clear ALL local data for new user sign up
                         // User data remains in Supabase database and will be restored on sign in
                         UserDefaults.standard.set(false, forKey: "hp_isSignedIn")
                         UserDefaults.standard.set(false, forKey: "hp_hasOnboarded")
-                        // Note: We keep user data in UserDefaults for potential quick restore,
-                        // but clear the sign-in flag so user must authenticate again
+                        
+                        // Clear persona and wellness snapshot data from UserDefaults
+                        UserDefaults.standard.removeObject(forKey: "hp_personaID")
+                        UserDefaults.standard.removeObject(forKey: "hp_recommendedCalories")
+                        UserDefaults.standard.removeObject(forKey: "hp_avatarNeedsInitialization")
+                        
+                        // Clear onboarding and signup dates for fresh start
+                        UserDefaults.standard.removeObject(forKey: "hp_onboardingStartDate")
+                        UserDefaults.standard.removeObject(forKey: "hp_signupDate")
+                        
+                        // Clear user profile data from UserDefaults
+                        UserDefaults.standard.removeObject(forKey: "hp_userEmail")
+                        UserDefaults.standard.removeObject(forKey: "hp_userName")
+                        
+                        // Clear tutorial flags so new user sees tutorial
+                        UserDefaults.standard.hasShownCameraTutorial = false
+                        UserDefaults.standard.justCompletedOnboarding = false
                         
                         // Clear Supabase session (authentication only, data remains in database)
                         SupabaseAuthService.shared.clearSession()
@@ -474,13 +492,37 @@ struct HomeScreen: View {
                         userData.goal = ""
                         userData.personaID = 0
                         userData.recommendedCalories = 0
+                        userData.bodyType = ""
+                        userData.metabolism = ""
+                        userData.eatingPattern = ""
+                        userData.BMI = 0
                         
-                        // Clear in-memory nutrition state for privacy (data still saved in Supabase)
+                        // CRITICAL: Clear ALL nutrition state data from UserDefaults for new user
+                        // This ensures new users start with a clean slate
+                        UserDefaults.standard.removeObject(forKey: "hp_avatarState")
+                        UserDefaults.standard.removeObject(forKey: "hp_caloriesCurrent")
+                        UserDefaults.standard.removeObject(forKey: "hp_caloriesGoal")
+                        UserDefaults.standard.removeObject(forKey: "hp_proteinCurrent")
+                        UserDefaults.standard.removeObject(forKey: "hp_carbsCurrent")
+                        UserDefaults.standard.removeObject(forKey: "hp_fatsCurrent")
+                        UserDefaults.standard.removeObject(forKey: "hp_lastMealDate")
+                        UserDefaults.standard.removeObject(forKey: "hp_daysWithoutMeals")
+                        UserDefaults.standard.removeObject(forKey: "hp_consistencyScore")
+                        UserDefaults.standard.removeObject(forKey: "hp_currentChallengeWeek")
+                        UserDefaults.standard.removeObject(forKey: "hp_lastCelebratedWeek")
+                        
+                        // Clear in-memory nutrition state completely for new user
                         nutrition.loggedMeals = []
                         nutrition.caloriesCurrent = 0
                         nutrition.proteinCurrent = 0
                         nutrition.carbsCurrent = 0
                         nutrition.fatsCurrent = 0
+                        nutrition.avatarState = .neutral // Reset to default
+                        nutrition.lastMealDate = nil
+                        nutrition.daysWithoutMeals = 0
+                        nutrition.consistencyScore = 0
+                        nutrition.currentChallengeWeek = 1
+                        nutrition.lastCelebratedWeek = 0
                         
                         // Close profile screen
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -521,6 +563,13 @@ struct HomeScreen: View {
                 nutrition.replaceAll(with: loggedFoods)   // make sure this exists on NutritionState
             }
         }
+        .cameraTutorial(
+            showAICamera: $showAICamera,
+            isOnHomeScreen: Binding(
+                get: { !showStats && !showProfile && !showExplore && !showRecipes && !showFoodLogger && !showAICamera },
+                set: { _ in }
+            )
+        )
     }
     
     // MARK: - Sections
@@ -608,19 +657,33 @@ struct HomeScreen: View {
                 
                 // Avatar view circle (moved up)
                 ZStack {
+                    // Outer ring background
                     Circle()
                         .fill(ForkiTheme.avatarRing.opacity(0.6))
-                        .frame(width: 230, height: 230)
+                        .frame(width: 208, height: 208)
                         .shadow(color: Color.black.opacity(0.1), radius: 18, x: 0, y: 10)
                     
                     // Fixed frame container to prevent layout shifts
                     ZStack {
+                        // Solid square background behind video to hide any square edges
+                        // Square is more efficient since video is square - we clip to circle anyway
+                        Rectangle()
+                            .fill(ForkiTheme.avatarStageBackground) // Match the stage background color
+                            .frame(width: 200, height: 200)
+                        
                         AvatarView(
                             state: nutrition.avatarState,
                             showFeedingEffect: $showFeedingEffect,
-                            size: 200
+                            size: 200,
+                            isCircular: true  // Circular frame - clip video to circle
                         )
-                        .clipShape(Circle())
+                        .clipShape(Circle()) // Clip to circle at SwiftUI level
+                        .frame(width: 200, height: 200) // Fixed frame to prevent overflow
+                        .onAppear {
+                            // Ensure avatar video auto-plays when HomeScreen appears
+                            // The AvatarVideoPlayer will handle the actual playback
+                            print("🎬 Avatar view appeared on HomeScreen - video should auto-play")
+                        }
                         
                         // Celebration glow overlay (doesn't affect layout)
                         if celebrating {
@@ -632,10 +695,12 @@ struct HomeScreen: View {
                         }
                     }
                     .frame(width: 200, height: 200) // Fixed frame prevents layout shifts
+                    .clipShape(Circle()) // Clip entire ZStack (including square background) to circle
                     .scaleEffect(celebrating ? 1.06 : 1.0)
                     .animation(.spring(response: 0.55, dampingFraction: 0.65), value: celebrating)
                     .clipped() // Ensure scale doesn't overflow
                 }
+                .compositingGroup() // Group layers together for better clipping
                 .padding(.bottom, 16)
                 
                 // Meals logged text at bottom inside the Avatar Stage
@@ -677,7 +742,7 @@ struct HomeScreen: View {
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),
-                foreground: Color(hex: "#9B7FBF"), // Purple text matching reference
+                foreground: ForkiTheme.borderPrimary, // Purple text (same as status bubble)
                 border: Color(hex: "#DDA5CC"), // Border color for pink button
                 dropShadow: ForkiTheme.actionShadow
             ) {
@@ -691,12 +756,12 @@ struct HomeScreen: View {
             HStack {
                 Text("Daily Calories")
                     .font(.system(size: 16, weight: .heavy, design: .rounded))
-                    .foregroundColor(Color(hex: "#9B7FBF")) // Light purple text
+                    .foregroundColor(ForkiTheme.borderPrimary) // Purple (same as status bubble)
                     .tracking(2)
                 Spacer()
                 Text("\(nutrition.caloriesCurrent) / \(nutrition.caloriesGoal)")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(hex: "#9B7FBF")) // Light purple text
+                    .foregroundColor(ForkiTheme.borderPrimary) // Purple (same as status bubble)
                     .monospacedDigit()
             }
             
@@ -988,7 +1053,7 @@ private struct ForkiLegendItem: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(segment.name.uppercased())
                     .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(hex: "#9B7FBF")) // Light purple
+                    .foregroundColor(ForkiTheme.borderPrimary) // Purple (same as status bubble)
                     .tracking(1.5)
                 Text("\(Int(round(segment.grams)))g")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
@@ -1160,7 +1225,7 @@ private struct ForkiCaloriesBar: View {
                 HStack(alignment: .center) {
                     Text("\(Int(round(clampedProgress * 100)))%")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(hex: "#9B7FBF")) // Light purple
+                        .foregroundColor(ForkiTheme.borderPrimary) // Purple (same as status bubble)
                         .monospacedDigit()
                 }
                 .frame(width: totalWidth - progressWidth)

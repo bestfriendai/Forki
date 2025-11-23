@@ -74,7 +74,7 @@ struct CalorieCameraBridge: View {
                                     .stroke(Color(hex: "#DDA5CC"), lineWidth: 4) // Pink border
                             )
                     )
-                    .foregroundColor(Color(hex: "#9B7FBF")) // Light purple text
+                    .foregroundColor(ForkiTheme.borderPrimary) // Purple text (same as status bubble)
                     .shadow(color: ForkiTheme.actionShadow, radius: 10, x: 0, y: 6)
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -104,10 +104,16 @@ struct CalorieCameraBridge: View {
                     }
                 },
                 onCancel: {
+                    NSLog("🔴 [Bridge] onCancel callback called")
+                    print("🔴 [Bridge] onCancel callback called")
                     DispatchQueue.main.async {
+                        NSLog("🔴 [Bridge] Setting showCalorieCamera = false")
+                        print("🔴 [Bridge] Setting showCalorieCamera = false")
                         onComplete(.cancelled)
                         showCalorieCamera = false
                         shouldDismiss = true
+                        NSLog("🔴 [Bridge] showCalorieCamera set to false, shouldDismiss = true")
+                        print("🔴 [Bridge] showCalorieCamera set to false, shouldDismiss = true")
                     }
                 }
             )

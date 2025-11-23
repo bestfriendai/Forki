@@ -140,7 +140,7 @@ struct ForkiPrimaryButtonStyle: ButtonStyle {
                     .fill(ForkiTheme.actionOrange.opacity(configuration.isPressed ? 0.85 : 1))
                     .shadow(color: ForkiTheme.actionShadow, radius: configuration.isPressed ? 6 : 12, x: 0, y: configuration.isPressed ? 3 : 6)
             )
-            .foregroundColor(.white)
+            .foregroundColor(ForkiTheme.borderPrimary) // Purple text (same as status bubble) for pink buttons
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
     }
 }
@@ -149,13 +149,13 @@ struct ForkiSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 18, weight: .heavy, design: .rounded))
-            .padding(.vertical, 16)
+            .padding(.vertical, 18)
             .frame(maxWidth: .infinity)
             .background(
-                Capsule(style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(ForkiTheme.surface.opacity(0.4))
                     .overlay(
-                        Capsule(style: .continuous)
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .stroke(ForkiTheme.borderPrimary.opacity(0.4), lineWidth: 2)
                     )
             )

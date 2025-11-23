@@ -8,6 +8,59 @@
 import Foundation
 
 extension OnboardingData {
+    /// Initialize OnboardingData from UserData (for editing mode)
+    static func fromUserData(_ userData: UserData) -> OnboardingData {
+        let data = OnboardingData()
+        
+        // Basic Info
+        data.age = userData.age
+        data.gender = GenderChoice(rawValue: userData.gender.lowercased())
+        
+        // Height - convert from cm back to feet/inches or cm
+        if let heightCm = Int(userData.height) {
+            data.heightCm = "\(heightCm)"
+            data.heightUnit = .cm
+            // Also set feet/inches for display
+            let totalInches = Double(heightCm) / 2.54
+            let feet = Int(totalInches / 12)
+            let inches = Int(totalInches.truncatingRemainder(dividingBy: 12))
+            data.heightFeet = "\(feet)"
+            data.heightInches = "\(inches)"
+        }
+        
+        // Weight - convert from kg (stored as String with decimals) back to lbs or kg
+        // Default to lbs for US users
+        if let weightKg = Double(userData.weight) {
+            data.weightKg = String(format: "%.1f", weightKg)
+            // Convert to lbs for pre-population (most users use lbs)
+            let weightLbs = weightKg * 2.20462
+            data.weightLbs = String(format: "%.1f", weightLbs)
+            data.weightUnit = .lbs  // Default to lbs
+        }
+        
+        // Goals
+        let goal = userData.normalizedGoal.lowercased()
+        if goal.contains("lose") {
+            data.primaryGoals = ["lose_weight"]
+        } else if goal.contains("gain") || goal.contains("build muscle") {
+            data.primaryGoals = ["gain_weight"]
+        } else if goal.contains("maintain") {
+            data.primaryGoals = ["maintain_weight"]
+        } else if goal.contains("habits") {
+            data.primaryGoals = ["improve_habits"]
+        } else if goal.contains("energy") || goal.contains("stress") {
+            data.primaryGoals = ["boost_energy"]
+        }
+        
+        // Food Preferences
+        data.dietaryPreferences = Set(userData.foodPreferences)
+        
+        // Notifications
+        data.notificationsEnabled = userData.notifications
+        
+        return data
+    }
+    
     /// Converts OnboardingData to UserData for integration with existing app flow
     func toUserData() -> UserData {
         var userData = UserData()
@@ -29,14 +82,21 @@ extension OnboardingData {
         }
         
         // Weight - convert to string format (store in kg for consistency)
+        // Store with one decimal place to preserve precision for accurate conversion back to lbs
         if weightUnit == .lbs {
             if let lbs = Double(weightLbs) {
                 let kgValue = lbs * 0.453592
-                let kg = Int(kgValue.rounded())
-                userData.weight = "\(kg)"
+                // Store with one decimal place to preserve accuracy
+                let kgRounded = (kgValue * 10).rounded() / 10
+                userData.weight = String(format: "%.1f", kgRounded)
             }
         } else {
-            userData.weight = weightKg
+            // If entered in kg, store as-is (may have decimal)
+            if let kg = Double(weightKg) {
+                userData.weight = String(format: "%.1f", kg)
+            } else {
+                userData.weight = weightKg
+            }
         }
         
         // Goals - map to new canonical goal strings

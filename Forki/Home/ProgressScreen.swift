@@ -99,12 +99,6 @@ struct ProgressScreen: View {
                     .padding(.bottom, 2)
                     .background(ForkiTheme.panelBackground.ignoresSafeArea(edges: .bottom))
             }
-            .overlay(
-                // Purple outline around the container
-                RoundedRectangle(cornerRadius: 0, style: .continuous)
-                    .stroke(ForkiTheme.borderPrimary, lineWidth: 4)
-                    .ignoresSafeArea()
-            )
         }
         .overlay {
             if showRecipes {
@@ -226,6 +220,10 @@ struct ProgressScreen: View {
                     AvatarView(state: avatarState, showFeedingEffect: .constant(false), size: 142) // 10% smaller (158 * 0.9 = 142.2 ≈ 142)
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                         .shadow(color: ForkiTheme.borderPrimary.opacity(0.15), radius: 10, x: 0, y: 5)
+                        .onAppear {
+                            // Ensure avatar video auto-plays when Progress screen appears
+                            print("🎬 Avatar view appeared on Progress Screen - video should auto-play")
+                        }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.leading, 5) // Left spacing
@@ -467,47 +465,44 @@ struct ProgressScreen: View {
     
     // MARK: - 6. Pet Challenge Tracker
     private var petChallengeTrackerCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let personaID = nutrition.personaID > 0 ? nutrition.personaID : self.personaID
+        let weeklyChallenge = PersonaChallengeLibrary.currentChallenge(for: personaID)
+        
+        return VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("🏆")
+                Text("🎯")
                     .font(.system(size: 16))
-                Text("Week 1 Pet Challenge")
+                Text("Week \(weeklyChallenge.week) Pet Challenge")
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundColor(ForkiTheme.textPrimary)
                 Spacer()
             }
             
-            if let persona = personaProfile {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(persona.petChallenge)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(ForkiTheme.textPrimary)
-                    
-                    // Progress bar
-                    HStack(spacing: 12) {
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(ForkiTheme.progressTrack)
-                                    .frame(height: 16)
-                                
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(ForkiTheme.highlightText)
-                                    .frame(width: geometry.size.width * challengeProgress, height: 16)
-                            }
-                        }
-                        .frame(height: 16)
-                        
-                        Text("\(challengeDaysCompleted)/\(challengeTotalDays)")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(ForkiTheme.textPrimary)
-                            .frame(width: 50)
-                    }
-                }
-            } else {
-                Text("Complete onboarding to unlock your pet challenge!")
+            VStack(alignment: .leading, spacing: 12) {
+                Text(weeklyChallenge.message)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(ForkiTheme.textSecondary)
+                    .foregroundColor(ForkiTheme.textPrimary)
+                
+                // Progress bar
+                HStack(spacing: 12) {
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(ForkiTheme.progressTrack)
+                                .frame(height: 16)
+                            
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(ForkiTheme.highlightText)
+                                .frame(width: geometry.size.width * challengeProgress, height: 16)
+                        }
+                    }
+                    .frame(height: 16)
+                    
+                    Text("\(challengeDaysCompleted)/\(challengeTotalDays)")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(ForkiTheme.textPrimary)
+                        .frame(width: 50)
+                }
             }
         }
         .padding(20)

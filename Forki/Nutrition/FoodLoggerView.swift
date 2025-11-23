@@ -127,12 +127,12 @@ struct FoodLoggerView: View {
                 
                 // If there's no prefill, handle search query changes
                 if prefill == nil {
-                    // If user clears the search query, return to default view (popular foods)
-                    if newValue.isEmpty {
+                    // Always clear selectedFood when user types in search bar
+                    // This ensures search results are shown instead of the previously selected food
+                    if !newValue.isEmpty {
                         selectedFood = nil
-                    } else if selectedFood != nil && newValue != previousSearchQuery {
-                        // When user types a new/different search query, clear previously selected food
-                        // so they can see new search results instead of the old selected food
+                    } else {
+                        // If user clears the search query, return to default view (popular foods)
                         selectedFood = nil
                     }
                 }
@@ -262,7 +262,11 @@ struct FoodLoggerView: View {
 
     private var mainContent: some View {
         VStack(spacing: 0) {
-            searchBarSection
+            // Only hide search bar when there's a prefill (from restaurants/detected log)
+            // Keep search bar visible when selecting from popular foods or search results
+            if prefill == nil {
+                searchBarSection
+            }
             contentArea
         }
         .overlay(
@@ -323,22 +327,27 @@ struct FoodLoggerView: View {
 
     @ViewBuilder
     private var contentArea: some View {
-        if let food = foodToDisplay {
-            // PREFILL (or selectedFood) always shown at top.
+        // Priority 1: If there's a prefill, always show it
+        if let prefillFood = prefill {
             VStack(spacing: 16) {
-                prefilledFoodView(food: food)
-                    .id(food.id) // force refresh
-
-                // Hide search results when a food item is selected
-                // Only show search results if there's NO prefill AND no food has been selected from search
+                prefilledFoodView(food: prefillFood)
+                    .id(prefillFood.id) // force refresh
             }
-        } else {
-            // No prefill:
-            if !searchQuery.isEmpty {
-                searchResultsSection
-            } else {
-                popularFoodsSection
+        }
+        // Priority 2: If a food is selected (from popular/search), show it (even if search query exists)
+        else if let selected = selectedFood {
+            VStack(spacing: 16) {
+                prefilledFoodView(food: selected)
+                    .id(selected.id) // force refresh
             }
+        }
+        // Priority 3: If user is actively searching (has search query), show search results
+        else if !searchQuery.isEmpty {
+            searchResultsSection
+        }
+        // Priority 4: Default to popular foods
+        else {
+            popularFoodsSection
         }
     }
 
@@ -684,6 +693,7 @@ struct FoodDetailView: View {
                     )
             }
             .padding(.horizontal, 20)
+            .padding(.top, -8) // Move content up
 
             // Portion Size
             VStack(spacing: 12) {
@@ -739,10 +749,10 @@ struct FoodDetailView: View {
                     onCancel()
                 } label: {
                     Text("Cancel")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 18, weight: .semibold, design: .rounded))
                         .foregroundColor(Color(hex: "#6B7280"))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 16)
                         .background(
                             Capsule()
                                 .fill(Color.white)
@@ -776,10 +786,10 @@ struct FoodDetailView: View {
                     onSave(logged)
                 } label: {
                     Text(isEditMode ? "Edit Log" : "Log Food")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 16)
                         .background(
                             Capsule()
                                 .fill(

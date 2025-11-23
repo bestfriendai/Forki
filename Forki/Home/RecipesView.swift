@@ -313,6 +313,28 @@ struct RecipesView: View {
     private var forYouContent: some View {
         VStack(alignment: .leading, spacing: 24) {
             weeklyPlanSection
+            
+            // Recommended Recipes Section
+            if !recommendedRecipes.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Recommended for You")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(ForkiTheme.textPrimary)
+                        .padding(.horizontal)
+                    
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12)
+                    ], alignment: .center, spacing: 12) {
+                        ForEach(recommendedRecipes.prefix(6)) { recipe in
+                            RecipeCard(recipe: recipe, onLogMeal: { logMeal(recipe) }) {
+                                selectedRecipe = recipe
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
         }
     }
     

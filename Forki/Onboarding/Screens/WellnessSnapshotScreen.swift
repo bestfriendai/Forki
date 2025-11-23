@@ -19,14 +19,14 @@ struct WellnessSnapshotScreen: View {
             ForkiTheme.backgroundGradient.ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 10) {
+                VStack(spacing: 8) {
                     
                     // PROGRESS BAR with Back Button
                     OnboardingProgressBar(
                         currentStep: navigator.currentStep,
                         totalSteps: navigator.totalSteps,
                         sectionIndex: navigator.getSectionIndex(for: navigator.currentStep),
-                        totalSections: 6,
+                        totalSections: 7,
                         canGoBack: navigator.canGoBack(),
                         onBack: { navigator.goBack() }
                     )
@@ -48,6 +48,7 @@ struct WellnessSnapshotScreen: View {
                         onNext()
                     }
                     .padding(.horizontal, 24)
+                    .padding(.top, 2) // Add 2px to match 20px spacing above Pet Challenge (8px VStack + 10px bottom padding + 2px = 20px)
                     .padding(.bottom, 32)
                 }
                 .frame(maxWidth: 460)
@@ -70,18 +71,18 @@ extension WellnessSnapshotScreen {
             
             // TITLE + SHORT INTRO
             VStack(spacing: 10) {
-                Text("Meet Your Eating Pet,\nForki!")
+                Text("Your Personalized Eating Plan")
                     .font(.system(size: 28, weight: .heavy, design: .rounded))
                     .foregroundColor(ForkiTheme.textPrimary)
                     .multilineTextAlignment(.center)
                 
-                Text("Your pet will help you build consistent habits.")
+                Text("Forki will help you build consistent habits.")
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundColor(ForkiTheme.textSecondary)
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 24)
-            .padding(.top, -12) // Increased negative padding to move title up more
+            .padding(.top, -16) // Reduce spacing above title by increasing negative padding
             
             ////////////////////////////////////////////////////////////
             // CARD 1 — BMI + BODY INFO + AVATAR
@@ -110,6 +111,10 @@ extension WellnessSnapshotScreen {
                         showFeedingEffect: .constant(false),
                         size: 140
                     )
+                    .onAppear {
+                        // Ensure avatar video auto-plays when Wellness Snapshot screen appears
+                        print("🎬 Avatar view appeared on Wellness Snapshot - video should auto-play")
+                    }
                 }
             }
             .padding(20)
@@ -124,7 +129,7 @@ extension WellnessSnapshotScreen {
                     Image(systemName: "fork.knife")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(ForkiTheme.highlightText)
-                    Text("Recommended Eating Habit")
+                    Text("Recommended Eating Pattern")
                         .font(.system(size: 18, weight: .semibold, design: .rounded))
                         .foregroundColor(ForkiTheme.textPrimary)
                 }
@@ -312,23 +317,24 @@ private struct BMIScaleView: View {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     // Background scale
+                    // BMI ranges: 15-18.5 (3.5 units = 14%), 18.5-25 (6.5 units = 26%), 25-30 (5 units = 20%), 30-40 (10 units = 40%)
                     HStack(spacing: 0) {
-                        // Underweight (15-18.5)
+                        // Underweight (15-18.5): 3.5/25 = 0.14 = 14%
                         Rectangle()
                             .fill(Color(hex: "#4A90E2").opacity(0.3))
-                            .frame(width: geometry.size.width * 0.175)
-                        // Normal (18.5-25)
+                            .frame(width: geometry.size.width * 0.14)
+                        // Normal (18.5-25): 6.5/25 = 0.26 = 26%
                         Rectangle()
                             .fill(Color(hex: "#4CAF50").opacity(0.3))
-                            .frame(width: geometry.size.width * 0.325)
-                        // Overweight (25-30)
+                            .frame(width: geometry.size.width * 0.26)
+                        // Overweight (25-30): 5/25 = 0.20 = 20%
                         Rectangle()
                             .fill(Color(hex: "#FF9800").opacity(0.3))
-                            .frame(width: geometry.size.width * 0.25)
-                        // Obese (30-40)
+                            .frame(width: geometry.size.width * 0.20)
+                        // Obese (30-40): 10/25 = 0.40 = 40%
                         Rectangle()
                             .fill(Color(hex: "#F44336").opacity(0.3))
-                            .frame(width: geometry.size.width * 0.25)
+                            .frame(width: geometry.size.width * 0.40)
                     }
                     
                     // BMI Indicator
@@ -346,19 +352,29 @@ private struct BMIScaleView: View {
                     let isUnder15 = bmi < 15.0
                     let isOver40 = bmi > 40.0
                     
-                    let clampedBMI = max(15.0, min(40.0, bmi))
-                    let bmiPosition = CGFloat((clampedBMI - 15) / (40 - 15)) * geometry.size.width
-                    
-                    // Position the indicator container
-                    let indicatorPosition: CGFloat = {
+                    // Calculate exact position for BMI value on the scale (15-40 range)
+                    // The scale goes from 0 (BMI 15) to geometry.size.width (BMI 40)
+                    let exactBMIPosition: CGFloat = {
                         if isUnder15 {
+                            // For values below 15, position at minimum (but keep indicator visible)
                             return minPosition
                         } else if isOver40 {
+                            // For values above 40, position at maximum (but keep indicator visible)
                             return maxPosition
                         } else {
-                            return max(minPosition, min(maxPosition, bmiPosition))
+                            // For values in 15-40 range, calculate EXACT position
+                            // Formula: (bmi - 15) / (40 - 15) * width
+                            // This maps BMI 15 -> 0, BMI 40 -> width
+                            let normalizedPosition = (bmi - 15.0) / (40.0 - 15.0)
+                            let calculatedPosition = normalizedPosition * geometry.size.width
+                            // For values in range, use exact calculated position (no constraint needed)
+                            return calculatedPosition
                         }
                     }()
+                    
+                    // Position the indicator so the arrow (centered in indicator) points exactly at exactBMIPosition
+                    // The indicator is offset so its center aligns with exactBMIPosition
+                    let indicatorPosition = exactBMIPosition
                     
                     VStack(spacing: 4) {
                         Text("You - \(String(format: "%.1f", bmi))")
@@ -374,50 +390,76 @@ private struct BMIScaleView: View {
                                             .stroke(ForkiTheme.borderPrimary, lineWidth: 2)
                                     )
                             )
-                            .frame(maxWidth: .infinity, alignment: .center)
+                            .frame(width: indicatorWidth, alignment: .center)
                         
-                        // Arrow positioned based on alignment
+                        // Arrow positioned to point exactly at the BMI value
+                        // For extreme values (<15 or >40), adjust arrow position within indicator to keep it within bar bounds
+                        // For normal values (15-40), center the arrow perfectly to point at exact BMI position
                         HStack {
                             if isOver40 {
+                                Spacer() // Push arrow left when over 40 to keep indicator within bounds
+                            } else if !isUnder15 {
+                                // For normal values (15-40), center the arrow perfectly
                                 Spacer()
                             }
                             Triangle()
                                 .fill(ForkiTheme.borderPrimary)
                                 .frame(width: triangleWidth, height: 8)
                             if isUnder15 {
+                                Spacer() // Push arrow right when under 15 to keep indicator within bounds
+                            } else if !isOver40 {
+                                // For normal values (15-40), center the arrow perfectly
                                 Spacer()
                             }
                         }
                         .frame(width: indicatorWidth)
                     }
                     .frame(width: indicatorWidth)
+                    // Position indicator so its center (where arrow points) is at exactBMIPosition
+                    // The offset centers the indicator (width/2) at the exact BMI position
                     .offset(x: indicatorPosition - halfIndicatorWidth, y: 0)
                 }
             }
             .frame(height: 50)
             
-            // Labels
-            HStack {
-                Text("15")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundColor(ForkiTheme.textSecondary)
-                Spacer()
-                Text("18.5")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundColor(ForkiTheme.textSecondary)
-                Spacer()
-                Text("25")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundColor(ForkiTheme.textSecondary)
-                Spacer()
-                Text("30")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundColor(ForkiTheme.textSecondary)
-                Spacer()
-                Text("40")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundColor(ForkiTheme.textSecondary)
+            // Labels positioned exactly at segment boundaries
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    // Position each label at the exact segment boundary
+                    // 15 at 0%, 18.5 at 14% (start of green), 25 at 40% (start of orange), 30 at 60% (start of red), 40 at 100%
+                    
+                    // 15 at start (0%) - left aligned
+                    Text("15")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(ForkiTheme.textSecondary)
+                        .offset(x: 0)
+                    
+                    // 18.5 at 14% - start of green segment (where underweight ends, normal begins)
+                    Text("18.5")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(ForkiTheme.textSecondary)
+                        .offset(x: geometry.size.width * 0.14) // Position at boundary where green starts
+                    
+                    // 25 at 40% - start of orange segment (14% + 26%)
+                    Text("25")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(ForkiTheme.textSecondary)
+                        .offset(x: geometry.size.width * 0.40) // Position at boundary where orange starts
+                    
+                    // 30 at 60% - start of red segment (40% + 20%)
+                    Text("30")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(ForkiTheme.textSecondary)
+                        .offset(x: geometry.size.width * 0.60) // Position at boundary where red starts
+                    
+                    // 40 at 100% - end, right aligned
+                    Text("40")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(ForkiTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
             }
+            .frame(height: 14) // Fixed height for labels
             
             // Category labels
             HStack(spacing: 0) {

@@ -19,11 +19,18 @@ final class NutritionState: ObservableObject {
     @Published var daysWithoutMeals: Int = 0
     @Published var consistencyScore: Int = 0   // days per week with >= 2 meals
     @Published var personaID: Int = 13         // default persona
+    
+    // Weekly challenge tracking (6-week plan)
+    @Published var currentChallengeWeek: Int = 1        // 1–6
+    @Published var lastCelebratedWeek: Int = 0          // last week we fired confetti
 
     init(goal: Int = 2000) {
         self.caloriesGoal = goal
         // Nothing logged yet → neutral pet, 0%
         recomputeFromMeals() // This calls updateMealHistory() internally
+        
+        // Initialize challenge week based on signup date if available
+        updateCurrentChallengeWeek()
     }
 
     // Derived
@@ -135,17 +142,33 @@ final class NutritionState: ObservableObject {
         updateMealHistory()
         updateAvatarState()
         
+        // Save meal log to Supabase
+        saveMealLogToSupabase(mealLog: MealLog(from: lf))
+        
+        // Save avatar state
+        saveAvatarState()
+        
         // Always trigger normal sparkle on log
         SparkleEventBus.shared.sparklePublisher.send(.normalSparkle)
         
         // Check milestone celebrations
         checkForSparkleAchievements()
+        
+        // Evaluate notifications after meal is logged
+        NotificationEngine.shared.evaluatePostMealState(self)
     }
     
     func remove(_ id: UUID) {
+        // Delete meal log from Supabase
+        deleteMealLogFromSupabase(mealLogId: id)
+        
         loggedMeals.removeAll { $0.id == id }
         recomputeFromMeals()
         updateMealHistory()
+        updateAvatarState()
+        
+        // Save avatar state
+        saveAvatarState()
     }
     
     func update(_ id: UUID, with loggedFood: LoggedFood) {
@@ -161,12 +184,20 @@ final class NutritionState: ObservableObject {
         loggedMeals[index] = updatedFood
         recomputeFromMeals()
         updateMealHistory()
+        updateAvatarState()
+        
+        // Update meal log in Supabase
+        updateMealLogInSupabase(mealLog: MealLog(from: updatedFood))
+        
+        // Save avatar state
+        saveAvatarState()
     }
 
     func replaceAll(with foods: [LoggedFood]) {
         loggedMeals = foods
-        recomputeFromMeals()
-        updateMealHistory()
+        recomputeFromMeals() // This calculates calories, macros from meals
+        updateMealHistory() // This updates consistency score, days without meals, etc.
+        // Note: updateAvatarState() is called separately after this to ensure correct state
     }
 
     func setGoal(_ newGoal: Int) {
@@ -186,21 +217,67 @@ final class NutritionState: ObservableObject {
     }
     
     // Initialize avatar from wellness snapshot after onboarding
-    func initializeFromSnapshot(personaID: Int, recommendedCalories: Int) {
+    // NOTE: This is called when user signs in or completes onboarding
+    // clearMeals: true = new user (first-time onboarding), false = existing user (sign-in)
+    func initializeFromSnapshot(personaID: Int, recommendedCalories: Int, clearMeals: Bool = false) {
         self.personaID = personaID
         self.caloriesGoal = recommendedCalories
         
-        // Reset logs for a clean Day 1 start
-        self.loggedMeals = []
-        self.caloriesCurrent = 0
-        self.lastMealDate = nil
-        self.daysWithoutMeals = 0
+        // For new users (first-time onboarding), clear everything for a fresh start
+        if clearMeals {
+            // Clear all meal logs
+            self.loggedMeals = []
+            self.caloriesCurrent = 0
+            self.proteinCurrent = 0
+            self.carbsCurrent = 0
+            self.fatsCurrent = 0
+            self.lastMealDate = nil
+            self.daysWithoutMeals = 0
+            self.consistencyScore = 0
+            self.currentChallengeWeek = 1
+            self.lastCelebratedWeek = 0
+            
+            // Clear all nutrition-related UserDefaults to ensure clean slate
+            UserDefaults.standard.removeObject(forKey: "hp_avatarState")
+            UserDefaults.standard.removeObject(forKey: "hp_caloriesCurrent")
+            UserDefaults.standard.removeObject(forKey: "hp_caloriesGoal")
+            UserDefaults.standard.removeObject(forKey: "hp_proteinCurrent")
+            UserDefaults.standard.removeObject(forKey: "hp_carbsCurrent")
+            UserDefaults.standard.removeObject(forKey: "hp_fatsCurrent")
+            UserDefaults.standard.removeObject(forKey: "hp_lastMealDate")
+            UserDefaults.standard.removeObject(forKey: "hp_daysWithoutMeals")
+            UserDefaults.standard.removeObject(forKey: "hp_consistencyScore")
+            UserDefaults.standard.removeObject(forKey: "hp_currentChallengeWeek")
+            UserDefaults.standard.removeObject(forKey: "hp_lastCelebratedWeek")
+            
+            NSLog("🆕 [NutritionState] New user initialization - cleared all meal logs and state")
+        }
         
-        // Persona-based default mood
+        // Update meal history first (will recalculate consistency score)
+        updateMealHistory()
+        
+        // Persona-based default mood, but then update based on current state
+        // This ensures avatar state is correct even if there are existing meals
         self.avatarState = initialAvatarState(for: personaID)
         
-        // Update meal history (will set consistency score to 0)
+        // Recalculate avatar state based on current nutrition data
+        updateAvatarState()
+        
+        // Save avatar state after initialization
+        saveAvatarState()
+        
+        NSLog("✅ [NutritionState] Initialized from snapshot - persona: \(personaID), calories: \(recommendedCalories), clearMeals: \(clearMeals), meals: \(loggedMeals.count)")
+    }
+    
+    // Public method to refresh avatar state - useful when screen appears
+    // This ensures avatar state is correct based on current time, meals, and nutrition data
+    func updateAvatarStateIfNeeded() {
+        // Always update meal history first (may affect daysWithoutMeals, consistency, etc.)
         updateMealHistory()
+        
+        // Then update avatar state based on current conditions
+        // This handles time-based checks (e.g., 6pm starving) and current nutrition
+        updateAvatarState()
     }
     
     // Get initial avatar state based on persona
@@ -272,6 +349,9 @@ final class NutritionState: ObservableObject {
         
         // Update consistency score
         updateConsistencyScore()
+        
+        // Evaluate daily meal patterns for notifications
+        NotificationEngine.shared.evaluateDailyMealPatterns(self)
     }
     
     // Update consistency score (days per week with >= 2 meals)
@@ -348,10 +428,15 @@ final class NutritionState: ObservableObject {
         }
     }
 
-    private func updateAvatarState() {
+    func updateAvatarState() {
+        let previousState = avatarState
+        
         // 1. Death check
         if daysWithoutMeals >= 3 {
             avatarState = .dead
+            if previousState != .dead {
+                NSLog("🎭 [NutritionState] Avatar state changed: \(previousState.rawValue) → \(avatarState.rawValue) (3+ days without meals)")
+            }
             return
         }
         
@@ -359,6 +444,9 @@ final class NutritionState: ObservableObject {
         let hour = Calendar.current.component(.hour, from: Date())
         if hour >= 18 && caloriesCurrent == 0 && mealsLoggedToday == 0 {
             avatarState = .starving
+            if previousState != .starving {
+                NSLog("🎭 [NutritionState] Avatar state changed: \(previousState.rawValue) → \(avatarState.rawValue) (6pm, no meals today)")
+            }
             return
         }
         
@@ -392,6 +480,217 @@ final class NutritionState: ObservableObject {
         }
         
         avatarState = state
+        
+        // Log state change if different
+        if previousState != avatarState {
+            NSLog("🎭 [NutritionState] Avatar state changed: \(previousState.rawValue) → \(avatarState.rawValue) (ratio: \(String(format: "%.2f", ratio)), calories: \(caloriesCurrent)/\(caloriesGoal), persona: \(personaID))")
+            // Save avatar state when it changes
+            saveAvatarState()
+        }
+        
+        // Evaluate avatar state for notifications
+        NotificationEngine.shared.evaluateAvatarState(self)
+    }
+    
+    // MARK: - Persistence Methods
+    
+    // Save avatar state to UserDefaults (for local persistence)
+    private func saveAvatarState() {
+        UserDefaults.standard.set(avatarState.rawValue, forKey: "hp_avatarState")
+        UserDefaults.standard.set(caloriesCurrent, forKey: "hp_caloriesCurrent")
+        UserDefaults.standard.set(caloriesGoal, forKey: "hp_caloriesGoal")
+        UserDefaults.standard.set(proteinCurrent, forKey: "hp_proteinCurrent")
+        UserDefaults.standard.set(carbsCurrent, forKey: "hp_carbsCurrent")
+        UserDefaults.standard.set(fatsCurrent, forKey: "hp_fatsCurrent")
+        
+        if let lastMeal = lastMealDate {
+            UserDefaults.standard.set(lastMeal, forKey: "hp_lastMealDate")
+        }
+        UserDefaults.standard.set(daysWithoutMeals, forKey: "hp_daysWithoutMeals")
+        UserDefaults.standard.set(consistencyScore, forKey: "hp_consistencyScore")
+        
+        NSLog("💾 [NutritionState] Saved avatar state: \(avatarState.rawValue), calories: \(caloriesCurrent)/\(caloriesGoal)")
+    }
+    
+    // Load avatar state from UserDefaults
+    func loadAvatarState() {
+        if let savedState = UserDefaults.standard.string(forKey: "hp_avatarState"),
+           let state = AvatarState(rawValue: savedState) {
+            avatarState = state
+            NSLog("📥 [NutritionState] Loaded avatar state: \(avatarState.rawValue)")
+        }
+        
+        caloriesCurrent = UserDefaults.standard.integer(forKey: "hp_caloriesCurrent")
+        caloriesGoal = UserDefaults.standard.integer(forKey: "hp_caloriesGoal")
+        if caloriesGoal == 0 { caloriesGoal = 2000 } // Default
+        
+        proteinCurrent = UserDefaults.standard.double(forKey: "hp_proteinCurrent")
+        carbsCurrent = UserDefaults.standard.double(forKey: "hp_carbsCurrent")
+        fatsCurrent = UserDefaults.standard.double(forKey: "hp_fatsCurrent")
+        
+        if let savedDate = UserDefaults.standard.object(forKey: "hp_lastMealDate") as? Date {
+            lastMealDate = savedDate
+        }
+        daysWithoutMeals = UserDefaults.standard.integer(forKey: "hp_daysWithoutMeals")
+        consistencyScore = UserDefaults.standard.integer(forKey: "hp_consistencyScore")
+    }
+    
+    // Save meal log to Supabase (async, fire-and-forget)
+    private func saveMealLogToSupabase(mealLog: MealLog) {
+        guard let userId = UserDefaults.standard.string(forKey: "supabase_user_id") else {
+            NSLog("⚠️ [NutritionState] No user ID for saving meal log")
+            return
+        }
+        
+        Task {
+            do {
+                let session = SupabaseAuthService.shared.getCurrentSession()
+                try await SupabaseAuthService.shared.saveMealLog(
+                    userId: userId,
+                    mealLog: mealLog,
+                    accessToken: session?.accessToken
+                )
+                NSLog("✅ [NutritionState] Saved meal log to Supabase: \(mealLog.food.name)")
+            } catch {
+                NSLog("❌ [NutritionState] Failed to save meal log: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    // Update meal log in Supabase (async, fire-and-forget)
+    private func updateMealLogInSupabase(mealLog: MealLog) {
+        guard let userId = UserDefaults.standard.string(forKey: "supabase_user_id") else {
+            return
+        }
+        
+        Task {
+            do {
+                let session = SupabaseAuthService.shared.getCurrentSession()
+                try await SupabaseAuthService.shared.updateMealLog(
+                    userId: userId,
+                    mealLog: mealLog,
+                    accessToken: session?.accessToken
+                )
+                NSLog("✅ [NutritionState] Updated meal log in Supabase: \(mealLog.food.name)")
+            } catch {
+                NSLog("❌ [NutritionState] Failed to update meal log: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    // Delete meal log from Supabase (async, fire-and-forget)
+    private func deleteMealLogFromSupabase(mealLogId: UUID) {
+        Task {
+            do {
+                let session = SupabaseAuthService.shared.getCurrentSession()
+                try await SupabaseAuthService.shared.deleteMealLog(
+                    mealLogId: mealLogId,
+                    accessToken: session?.accessToken
+                )
+                NSLog("✅ [NutritionState] Deleted meal log from Supabase: \(mealLogId)")
+            } catch {
+                NSLog("❌ [NutritionState] Failed to delete meal log: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    // Load meal logs from Supabase
+    func loadMealLogsFromSupabase() async {
+        guard let userId = UserDefaults.standard.string(forKey: "supabase_user_id") else {
+            NSLog("⚠️ [NutritionState] No user ID for loading meal logs")
+            return
+        }
+        
+        do {
+            let session = SupabaseAuthService.shared.getCurrentSession()
+            let mealLogs = try await SupabaseAuthService.shared.loadMealLogs(
+                userId: userId,
+                accessToken: session?.accessToken
+            )
+            
+            await MainActor.run {
+                let loggedFoods = mealLogs.map { $0.toLoggedFood() }
+                self.replaceAll(with: loggedFoods)
+                self.updateMealHistory()
+                // Calculate avatar state from loaded meal logs (don't load from UserDefaults)
+                self.updateAvatarState()
+                // Save the calculated state to UserDefaults for future use
+                self.saveAvatarState()
+                NSLog("✅ [NutritionState] Loaded \(mealLogs.count) meal logs from Supabase, calories: \(self.caloriesCurrent)/\(self.caloriesGoal), avatar: \(self.avatarState.rawValue)")
+            }
+        } catch {
+            NSLog("❌ [NutritionState] Failed to load meal logs: \(error.localizedDescription)")
+        }
+    }
+    
+    // MARK: - Weekly Challenge Week Calculation (6-week plan)
+    private func updateCurrentChallengeWeek() {
+        // If we have a stored week, start from that but recompute from signup date if available
+        let storedWeek = UserDefaults.standard.integer(forKey: "hp_currentChallengeWeek")
+        
+        if let signupDate = UserDefaults.standard.object(forKey: "hp_signupDate") as? Date {
+            let calendar = Calendar.current
+            let daysSinceSignup = calendar.dateComponents([.day], from: signupDate, to: Date()).day ?? 0
+            // Week is 1-based, each week = 7 days
+            var week = daysSinceSignup / 7 + 1
+            week = max(1, min(week, 6)) // clamp to 1...6
+            
+            currentChallengeWeek = week
+            UserDefaults.standard.set(week, forKey: "hp_currentChallengeWeek")
+        } else {
+            // Fallback to stored value or Week 1
+            currentChallengeWeek = storedWeek > 0 ? storedWeek : 1
+            UserDefaults.standard.set(currentChallengeWeek, forKey: "hp_currentChallengeWeek")
+        }
+        
+        // Load last celebrated week
+        lastCelebratedWeek = UserDefaults.standard.integer(forKey: "hp_lastCelebratedWeek")
+    }
+    
+    // MARK: - Weekly Challenge Completion Logic
+    /// Simple, user-friendly 6-week ramp using existing metrics:
+    /// - consistencyScore = days in last 7 days with >= 2 meals
+    /// - ratio = today's caloriesCurrent / caloriesGoal
+    private func checkWeeklyChallengeCompletion() {
+        // Make sure week index is up to date (1...6)
+        updateCurrentChallengeWeek()
+        
+        // Avoid double-celebrating the same week
+        guard currentChallengeWeek != lastCelebratedWeek else { return }
+        
+        let ratio = Double(caloriesCurrent) / Double(max(1, caloriesGoal))
+        var completed = false
+        
+        switch currentChallengeWeek {
+        case 1:
+            // Week 1: "Just show up" — reach 3+ days with >= 2 meals
+            completed = consistencyScore >= 3
+        case 2:
+            // Week 2: "Get more consistent" — 4+ days
+            completed = consistencyScore >= 4
+        case 3:
+            // Week 3: "Hit your pattern most days" — 5+ days
+            completed = consistencyScore >= 5
+        case 4:
+            // Week 4: "Fuel close to your goal" — decent consistency + near goal
+            completed = consistencyScore >= 5 && ratio >= 0.85 && ratio <= 1.15
+        case 5:
+            // Week 5: "Feed your pet well" — strong consistency + at least ~75% of calories
+            completed = consistencyScore >= 5 && ratio >= 0.75
+        case 6:
+            // Week 6: "Boss level consistency" — 6–7 days
+            completed = consistencyScore >= 6
+        default:
+            completed = false
+        }
+        
+        if completed {
+            lastCelebratedWeek = currentChallengeWeek
+            UserDefaults.standard.set(lastCelebratedWeek, forKey: "hp_lastCelebratedWeek")
+            
+            // 🎉 Fire purple confetti once for this week's challenge
+            SparkleEventBus.shared.sparklePublisher.send(.purpleConfetti)
+        }
     }
     
     // Check for milestone celebrations and trigger purple confetti
@@ -408,9 +707,13 @@ final class NutritionState: ObservableObject {
             SparkleEventBus.shared.sparklePublisher.send(.purpleConfetti)
         }
         
+        // (Optional) You can remove this if you only want weekly challenges to handle "weekly" wins.
         // 🎉 3. Weekly consistency achievement
         if consistencyScore >= 5 && consistencyScore <= 7 {
             SparkleEventBus.shared.sparklePublisher.send(.purpleConfetti)
         }
+        
+        // 🎉 4. Weekly Pet Challenge completion (6-week plan)
+        checkWeeklyChallengeCompletion()
     }
 }

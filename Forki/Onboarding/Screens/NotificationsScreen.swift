@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import UserNotifications
+import UIKit
 
 struct NotificationsScreen: View {
     // Onboarding flow properties
@@ -62,21 +64,71 @@ struct NotificationsScreen: View {
                     }
                     
                     // Content
-                    VStack(spacing: 24) {
+                    VStack(spacing: 20) {
                         content
-                            .forkiPanel()
                     }
-                    .frame(maxWidth: 460)
+                    .forkiPanel()
                     .padding(.horizontal, 24)
-                    .padding(.vertical, 36)
+                    
+                    // Buttons (outside panel)
+                    VStack(spacing: 16) {
+                        OnboardingPrimaryButton(
+                            title: "Yes, Keep Me On Track",
+                            isEnabled: true
+                        ) {
+                            if let data = onboardingData {
+                                // Onboarding flow - request permissions first
+                                data.notificationsEnabled = true
+                                requestNotificationPermissions {
+                                    // After permission popup completes, finish onboarding
+                                    completeOnboarding()
+                                }
+                            } else {
+                                // Legacy flow
+                                userData.notifications = true
+                                requestNotificationPermissions {
+                                    UserDefaults.standard.set(true, forKey: "hp_isSignedIn")
+                                    UserDefaults.standard.set(true, forKey: "hp_hasOnboarded")
+                                    withAnimation { currentScreen = 6 }
+                                }
+                            }
+                        }
+                        
+                        Button {
+                            if let data = onboardingData {
+                                // Onboarding flow
+                                data.notificationsEnabled = false
+                                completeOnboarding()
+                            } else {
+                                // Legacy flow
+                                userData.notifications = false
+                                UserDefaults.standard.set(true, forKey: "hp_isSignedIn")
+                                UserDefaults.standard.set(true, forKey: "hp_hasOnboarded")
+                                withAnimation { currentScreen = 6 }
+                            }
+                        } label: {
+                            Text("Maybe Later")
+                        }
+                        .buttonStyle(ForkiSecondaryButtonStyle())
+                        
+                        // Footer
+                        Text("Users with reminders are 3× more consistent.")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(ForkiTheme.textSecondary.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 4)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 32)
                 }
+                .frame(maxWidth: 460)
             }
         }
     }
     
     // MARK: Content
     private var content: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             // Icon
             VStack {
                 ZStack {
@@ -125,71 +177,49 @@ struct NotificationsScreen: View {
                             .stroke(ForkiTheme.borderPrimary.opacity(0.4), lineWidth: 2)
                     )
             )
-            
-            // Buttons
-            VStack(spacing: 16) {
-                Button {
-                    if let data = onboardingData {
-                        // Onboarding flow
-                        data.notificationsEnabled = true
-                        completeOnboarding()
-                    } else {
-                        // Legacy flow
-                        userData.notifications = true
-                        UserDefaults.standard.set(true, forKey: "hp_isSignedIn")
-                        UserDefaults.standard.set(true, forKey: "hp_hasOnboarded")
-                        withAnimation { currentScreen = 6 }
-                    }
-                } label: {
-                    Text("Enable Notifications")
-                }
-                .buttonStyle(ForkiPrimaryButtonStyle())
-                
-                Button {
-                    if let data = onboardingData {
-                        // Onboarding flow
-                        data.notificationsEnabled = false
-                        completeOnboarding()
-                    } else {
-                        // Legacy flow
-                        userData.notifications = false
-                        UserDefaults.standard.set(true, forKey: "hp_isSignedIn")
-                        UserDefaults.standard.set(true, forKey: "hp_hasOnboarded")
-                        withAnimation { currentScreen = 6 }
-                    }
-                } label: {
-                    Text("Maybe Later")
-                }
-                .buttonStyle(ForkiSecondaryButtonStyle())
-            }
-            
-            // Footer
-            Text("Users with reminders are 3× more consistent.")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundColor(ForkiTheme.textSecondary.opacity(0.8))
-                .multilineTextAlignment(.center)
-                .padding(.top, 8)
         }
     }
     
     // MARK: - Helper Methods
     
+    private func requestNotificationPermissions(completion: @escaping () -> Void) {
+        // Check current authorization status first
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                switch settings.authorizationStatus {
+                case .notDetermined:
+                    // Show permission popup
+                    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                        DispatchQueue.main.async {
+                            if granted {
+                                print("✅ Notification permissions granted")
+                            } else {
+                                print("❌ Notification permissions denied")
+                            }
+                            // Complete regardless of permission result
+                            completion()
+                        }
+                    }
+                case .denied:
+                    // Already denied - open Settings
+                    if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(settingsUrl)
+                    }
+                    // Complete after opening Settings
+                    completion()
+                case .authorized, .provisional, .ephemeral:
+                    // Already authorized - just complete
+                    print("✅ Notification permissions already granted")
+                    completion()
+                @unknown default:
+                    completion()
+                }
+            }
+        }
+    }
+    
     private func completeOnboarding() {
-        guard let data = onboardingData else { return }
-        
-        // Calculate snapshot for initialization
-        let snapshot = WellnessSnapshotCalculator.calculateSnapshot(from: data)
-        
-        // Store snapshot data for avatar initialization
-        UserDefaults.standard.set(snapshot.persona.personaType, forKey: "hp_personaID")
-        UserDefaults.standard.set(snapshot.recommendedCalories, forKey: "hp_recommendedCalories")
-        UserDefaults.standard.set(true, forKey: "hp_avatarNeedsInitialization")
-        
-        // Mark as onboarded
-        UserDefaults.standard.set(true, forKey: "hp_isSignedIn")
-        UserDefaults.standard.set(true, forKey: "hp_hasOnboarded")
-        
-        // Complete onboarding
+        // Simply trigger the completion callback - OnboardingFlow handles all initialization
         onboardingComplete?()
     }
 }

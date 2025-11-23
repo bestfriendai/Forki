@@ -79,15 +79,16 @@ struct IntroScreen: View {
                 .padding(.horizontal, 16)
                 
                 VStack(spacing: 12) {
-                    Text("Welcome to Forki")
+                    Text("Ready to eat healthier?")
                         .font(.system(size: 28, weight: .heavy, design: .rounded))
                         .foregroundColor(ForkiTheme.textPrimary)
                         .multilineTextAlignment(.center)
                     
-                    Text("Your small daily habits become big progress — with a pet that grows stronger as you do.")
+                    Text("Build stronger habits each day —\nwith your own pet, Forki.")
                         .font(.system(size: 16, weight: .medium, design: .rounded))
                         .foregroundColor(ForkiTheme.textSecondary)
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 16)
                         .lineSpacing(4)
                 }
@@ -101,26 +102,29 @@ struct IntroScreen: View {
                             Image(systemName: "fork.knife")
                                 .font(.system(size: 18, weight: .bold, design: .rounded))
                             Text("Let's Get Started!")
-                                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                                .font(.system(size: 18, weight: .heavy, design: .rounded))
                         }
-                        .frame(width: min(UIScreen.main.bounds.width - 88, 300))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         .background(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(
                                     LinearGradient(
-                                        colors: [Color(hex: "#8DD4D1"), Color(hex: "#6FB8B5")], // Mint gradient - same as Log Food button
+                                        colors: [
+                                            Color(hex: "#8B5CF6"), // Vibrant purple
+                                            Color(hex: "#A78BFA")  // Lighter vibrant purple
+                                        ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     )
                                 )
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                        .stroke(Color(hex: "#7AB8B5"), lineWidth: 4) // Border color for mint button
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color(hex: "#7B68C4"), lineWidth: 2) // Purple border matching theme
                                 )
                         )
-                        .foregroundColor(.white) // White text - same as Log Food button
-                        .shadow(color: ForkiTheme.actionShadow, radius: 10, x: 0, y: 6)
+                        .shadow(color: Color(hex: "#8B5CF6").opacity(0.4), radius: 16, x: 0, y: 8) // Purple glow
                     }
                     .buttonStyle(PlainButtonStyle())
                     
@@ -128,6 +132,8 @@ struct IntroScreen: View {
                         .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundColor(ForkiTheme.textSecondary.opacity(0.8))
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 8)
                 }
             }
             .padding(.horizontal, 28)
@@ -156,14 +162,6 @@ struct IntroScreen: View {
                     .tracking(1.6)
             }
             Spacer()
-            VStack(alignment: .trailing, spacing: 6) {
-                Text("Made with love,")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(ForkiTheme.textSecondary)
-                Text("by Forki")
-                    .font(.system(size: 16, weight: .heavy, design: .rounded))
-                    .foregroundColor(ForkiTheme.textPrimary)
-            }
         }
     }
 }
@@ -186,7 +184,7 @@ struct ConfettiView: View {
 }
 
 
-// MARK: - Avatar Video View
+// MARK: - Avatar Video View (No Controls)
 struct AvatarVideoView: View {
     let videoName: String
     @State private var player: AVPlayer?
@@ -197,14 +195,14 @@ struct AvatarVideoView: View {
     
     var body: some View {
         Group {
-            if let player = player {
-                VideoPlayer(player: player)
+            if player != nil {
+                IntroVideoPlayerView(player: player)
                     .aspectRatio(contentMode: .fill)
                     .onAppear {
-                        player.play()
+                        player?.play()
                     }
                     .onDisappear {
-                        player.pause()
+                        player?.pause()
                     }
             } else {
                 // Fallback placeholder while video loads
@@ -242,6 +240,37 @@ struct AvatarVideoView: View {
         
         self.player = newPlayer
         newPlayer.play()
+    }
+}
+
+// MARK: - Intro Video Player View (No Controls)
+struct IntroVideoPlayerView: UIViewRepresentable {
+    let player: AVPlayer?
+    
+    func makeUIView(context: Context) -> PlayerView {
+        let view = PlayerView()
+        view.playerLayer.player = player
+        return view
+    }
+    
+    func updateUIView(_ uiView: PlayerView, context: Context) {
+        uiView.playerLayer.player = player
+    }
+}
+
+// MARK: - Player View Container
+class PlayerView: UIView {
+    var playerLayer: AVPlayerLayer {
+        return layer as! AVPlayerLayer
+    }
+    
+    override class var layerClass: AnyClass {
+        return AVPlayerLayer.self
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        playerLayer.frame = bounds
     }
 }
 

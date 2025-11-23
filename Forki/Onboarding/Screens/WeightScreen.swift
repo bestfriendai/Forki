@@ -19,140 +19,173 @@ struct WeightScreen: View {
             ForkiTheme.backgroundGradient
                 .ignoresSafeArea()
             
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    // Progress Bar with Back Button
-                    OnboardingProgressBar(
-                        currentStep: navigator.currentStep,
-                        totalSteps: navigator.totalSteps,
-                        sectionIndex: navigator.getSectionIndex(for: navigator.currentStep),
-                        totalSections: 6,
-                        canGoBack: navigator.canGoBack(),
-                        onBack: { navigator.goBack() }
-                    )
-                    .padding(.horizontal, 24)
-                    .padding(.top, 12)
-                    
-                    // Content
-                    VStack(spacing: 32) {
-                        // Header
-                        VStack(spacing: 8) {
-                            Text("What's your current weight?")
-                                .font(.system(size: 28, weight: .heavy, design: .rounded))
-                                .foregroundColor(ForkiTheme.textPrimary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(.horizontal, 16)
+            ScrollViewReader { proxy in
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        // Progress Bar with Back Button
+                        OnboardingProgressBar(
+                            currentStep: navigator.currentStep,
+                            totalSteps: navigator.totalSteps,
+                            sectionIndex: navigator.getSectionIndex(for: navigator.currentStep),
+                            totalSections: 6,
+                            canGoBack: navigator.canGoBack(),
+                            onBack: { navigator.goBack() }
+                        )
+                        .padding(.horizontal, 24)
+                        .padding(.top, 12)
                         
-                        // Unit Selector - Connected Toggle (Centered) - LOG FOOD button style
-                        HStack {
-                            Spacer()
-                            HStack(spacing: 0) {
-                                ForEach(Array(WeightUnit.allCases.enumerated()), id: \.element) { index, unit in
-                                    UnitToggleButton(
-                                        text: unit.rawValue.uppercased(),
-                                        isSelected: data.weightUnit == unit,
-                                        action: {
-                                            withAnimation {
-                                                data.weightUnit = unit
+                        // Content
+                        VStack(spacing: 24) {
+                            // Header
+                            VStack(spacing: 8) {
+                                Text("What's your weight?")
+                                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                                    .foregroundColor(ForkiTheme.textPrimary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(.horizontal, 16)
+                            
+                            // Unit Selector - Connected Toggle (Centered) - LOG FOOD button style
+                            HStack {
+                                Spacer()
+                                HStack(spacing: 0) {
+                                    ForEach(Array(WeightUnit.allCases.enumerated()), id: \.element) { index, unit in
+                                        UnitToggleButton(
+                                            text: unit.rawValue.uppercased(),
+                                            isSelected: data.weightUnit == unit,
+                                            action: {
+                                                withAnimation {
+                                                    data.weightUnit = unit
+                                                }
+                                            }
+                                        )
+                                        
+                                        // Divider between buttons (except after last)
+                                        if index < WeightUnit.allCases.count - 1 {
+                                            Rectangle()
+                                                .fill(ForkiTheme.surface.opacity(0.5))
+                                                .frame(width: 1)
+                                        }
+                                    }
+                                }
+                                .background(
+                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                        .fill(ForkiTheme.surface.opacity(0.4))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                                .stroke(ForkiTheme.surface.opacity(0.6), lineWidth: 1.5)
+                                        )
+                                )
+                                .frame(width: 200)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 6)
+                            
+                            // Weight Input
+                            VStack(alignment: .leading, spacing: 8) {
+                                ZStack {
+                                    if (data.weightUnit == .lbs ? data.weightLbs : data.weightKg).isEmpty {
+                                        Text(data.weightUnit == .lbs ? "134" : "61")
+                                            .font(.system(size: 48, weight: .heavy, design: .rounded))
+                                            .foregroundColor(ForkiTheme.textSecondary.opacity(0.4))
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    
+                                    TextField("", text: data.weightUnit == .lbs ? $data.weightLbs : $data.weightKg)
+                                        .font(.system(size: 48, weight: .heavy, design: .rounded))
+                                        .foregroundColor(ForkiTheme.textPrimary)
+                                        .keyboardType(.decimalPad)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                        .focused($isWeightFocused)
+                                        .multilineTextAlignment(.center)
+                                        .frame(maxWidth: .infinity)
+                                        .textFieldStyle(PlainTextFieldStyle())
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            isWeightFocused = true
+                                        }
+                                }
+                                    .onAppear {
+                                        // Auto-focus weight field when screen appears for quick entry
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                            isWeightFocused = true
+                                        }
+                                    }
+                                    .onChange(of: data.weightUnit == .lbs ? data.weightLbs : data.weightKg) { _, newValue in
+                                        // Filter to allow only numeric input and decimal point
+                                        let filtered = newValue.filter { $0.isNumber || $0 == "." }
+                                        // Ensure only one decimal point
+                                        let components = filtered.components(separatedBy: ".")
+                                        let finalValue = components.prefix(2).joined(separator: ".")
+                                        if finalValue != newValue {
+                                            if data.weightUnit == .lbs {
+                                                data.weightLbs = finalValue
+                                            } else {
+                                                data.weightKg = finalValue
                                             }
                                         }
-                                    )
-                                    
-                                    // Divider between buttons (except after last)
-                                    if index < WeightUnit.allCases.count - 1 {
-                                        Rectangle()
-                                            .fill(ForkiTheme.surface.opacity(0.5))
-                                            .frame(width: 1)
                                     }
-                                }
-                            }
-                            .background(
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .fill(ForkiTheme.surface.opacity(0.4))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                            .stroke(ForkiTheme.surface.opacity(0.6), lineWidth: 1.5)
-                                    )
-                            )
-                            .frame(width: 200)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 6)
-                        
-                        // Weight Input
-                        VStack(alignment: .leading, spacing: 8) {
-                            TextField("120", text: data.weightUnit == .lbs ? $data.weightLbs : $data.weightKg)
-                                .font(.system(size: 48, weight: .heavy, design: .rounded))
-                                .foregroundColor(ForkiTheme.textPrimary)
-                                .keyboardType(.decimalPad)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .focused($isWeightFocused)
-                                .multilineTextAlignment(.center)
-                                .frame(maxWidth: .infinity)
-                                .textFieldStyle(PlainTextFieldStyle())
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    isWeightFocused = true
-                                }
-                                .onAppear {
-                                    // Auto-focus weight field when screen appears for quick entry
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                        isWeightFocused = true
-                                    }
-                                }
-                                .onChange(of: data.weightUnit == .lbs ? data.weightLbs : data.weightKg) { _, newValue in
-                                    // Filter to allow only numeric input and decimal point
-                                    let filtered = newValue.filter { $0.isNumber || $0 == "." }
-                                    // Ensure only one decimal point
-                                    let components = filtered.components(separatedBy: ".")
-                                    let finalValue = components.prefix(2).joined(separator: ".")
-                                    if finalValue != newValue {
-                                        if data.weightUnit == .lbs {
-                                            data.weightLbs = finalValue
-                                        } else {
-                                            data.weightKg = finalValue
+                                    .onChange(of: data.weightUnit) { _, _ in
+                                        // Auto-focus when unit changes
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                            isWeightFocused = true
                                         }
                                     }
-                                }
-                                .onChange(of: data.weightUnit) { _, _ in
-                                    // Auto-focus when unit changes
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                        isWeightFocused = true
-                                    }
-                                }
+                                
+                                Text(data.weightUnit.rawValue)
+                                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                                    .foregroundColor(ForkiTheme.textSecondary)
+                                    .frame(maxWidth: .infinity)
+                                
+                                Rectangle()
+                                    .fill(ForkiTheme.borderPrimary)
+                                    .frame(height: 2)
+                            }
+                            .padding(.horizontal, 6)
                             
-                            Text(data.weightUnit.rawValue)
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundColor(ForkiTheme.textSecondary)
-                                .frame(maxWidth: .infinity)
-                            
-                            Rectangle()
-                                .fill(ForkiTheme.borderPrimary)
-                                .frame(height: 2)
+                            // BMI Indicator
+                            if isWeightValid, let bmi = data.calculateBMI(), let category = data.getBMICategory() {
+                                BMIIndicatorView(bmi: bmi, category: category)
+                                    .id("bmiIndicator") // For scrolling to it
+                            }
                         }
-                        .padding(.horizontal, 6)
+                        .forkiPanel()
+                        .padding(.horizontal, 24)
                         
-                        // BMI Indicator
-                        if isWeightValid, let bmi = data.calculateBMI(), let category = data.getBMICategory() {
-                            BMIIndicatorView(bmi: bmi, category: category)
-                                .padding(.top, 8)
+                        // Next Button
+                        OnboardingPrimaryButton(
+                            isEnabled: isWeightValid
+                        ) {
+                            onNext()
+                        }
+                        .id("nextButton") // For scrolling to it
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20) // Reduced padding - will adjust for keyboard
+                    }
+                    .frame(maxWidth: 460)
+                }
+                .scrollDismissesKeyboard(.interactively) // Allow dismissing keyboard by swiping down
+                .onChange(of: isWeightFocused) { _, isFocused in
+                    if isFocused {
+                        // Scroll to show Next button when keyboard appears
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            withAnimation {
+                                proxy.scrollTo("nextButton", anchor: .bottom)
+                            }
                         }
                     }
-                    .forkiPanel()
-                    .padding(.horizontal, 24)
-                    
-                    // Next Button
-                    OnboardingPrimaryButton(
-                        isEnabled: isWeightValid
-                    ) {
-                        onNext()
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 32)
                 }
-                .frame(maxWidth: 460)
+                .onChange(of: isWeightValid) { _, isValid in
+                    if isValid {
+                        // When BMI indicator appears, scroll to show Next button
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            withAnimation {
+                                proxy.scrollTo("nextButton", anchor: .bottom)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

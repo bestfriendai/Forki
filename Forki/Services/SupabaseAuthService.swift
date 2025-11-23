@@ -636,12 +636,248 @@ class SupabaseAuthService {
         )
     }
     
+    // MARK: - Save Meal Log
+    func saveMealLog(userId: String, mealLog: MealLog, accessToken: String? = nil) async throws {
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/meal_logs") else {
+            throw AuthError.networkError("Invalid URL")
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(supabaseAPIKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Use session token for authentication
+        if let token = accessToken, !token.isEmpty && token != "pending" {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if let session = getCurrentSession(), !session.accessToken.isEmpty && session.accessToken != "pending" {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        } else {
+            request.setValue("Bearer \(supabaseAPIKey)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let formatter = ISO8601DateFormatter()
+        var mealLogDict: [String: Any] = [
+            "id": mealLog.id.uuidString,
+            "user_id": userId,
+            "food_id": mealLog.food.id,
+            "food_name": mealLog.food.name,
+            "calories": mealLog.food.calories,
+            "protein": mealLog.food.protein,
+            "carbs": mealLog.food.carbs,
+            "fats": mealLog.food.fats,
+            "category": mealLog.food.category,
+            "portion": mealLog.portion,
+            "logged_at": formatter.string(from: mealLog.timestamp)
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: mealLogDict)
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AuthError.networkError("Invalid response")
+        }
+        
+        if httpResponse.statusCode != 201 && httpResponse.statusCode != 200 {
+            // Try update if insert fails
+            try await updateMealLog(userId: userId, mealLog: mealLog, accessToken: accessToken)
+        }
+    }
+    
+    // MARK: - Update Meal Log
+    func updateMealLog(userId: String, mealLog: MealLog, accessToken: String? = nil) async throws {
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/meal_logs?id=eq.\(mealLog.id.uuidString)") else {
+            throw AuthError.networkError("Invalid URL")
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue(supabaseAPIKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        if let token = accessToken, !token.isEmpty && token != "pending" {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if let session = getCurrentSession(), !session.accessToken.isEmpty && session.accessToken != "pending" {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        } else {
+            request.setValue("Bearer \(supabaseAPIKey)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let formatter = ISO8601DateFormatter()
+        var mealLogDict: [String: Any] = [
+            "food_id": mealLog.food.id,
+            "food_name": mealLog.food.name,
+            "calories": mealLog.food.calories,
+            "protein": mealLog.food.protein,
+            "carbs": mealLog.food.carbs,
+            "fats": mealLog.food.fats,
+            "category": mealLog.food.category,
+            "portion": mealLog.portion,
+            "logged_at": formatter.string(from: mealLog.timestamp),
+            "updated_at": formatter.string(from: Date())
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: mealLogDict)
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AuthError.networkError("Invalid response")
+        }
+        
+        if httpResponse.statusCode != 200 && httpResponse.statusCode != 204 {
+            let errorMessage = "Failed to update meal log"
+            throw AuthError.unknownError(errorMessage)
+        }
+    }
+    
+    // MARK: - Delete Meal Log
+    func deleteMealLog(mealLogId: UUID, accessToken: String? = nil) async throws {
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/meal_logs?id=eq.\(mealLogId.uuidString)") else {
+            throw AuthError.networkError("Invalid URL")
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue(supabaseAPIKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        if let token = accessToken, !token.isEmpty && token != "pending" {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if let session = getCurrentSession(), !session.accessToken.isEmpty && session.accessToken != "pending" {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        } else {
+            request.setValue("Bearer \(supabaseAPIKey)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AuthError.networkError("Invalid response")
+        }
+        
+        if httpResponse.statusCode != 200 && httpResponse.statusCode != 204 {
+            throw AuthError.unknownError("Failed to delete meal log")
+        }
+    }
+    
+    // MARK: - Load Meal Logs
+    func loadMealLogs(userId: String, accessToken: String? = nil) async throws -> [MealLog] {
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/meal_logs?user_id=eq.\(userId)&select=*&order=logged_at.desc") else {
+            throw AuthError.networkError("Invalid URL")
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(supabaseAPIKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        if let token = accessToken, !token.isEmpty && token != "pending" {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if let session = getCurrentSession(), !session.accessToken.isEmpty && session.accessToken != "pending" {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        } else {
+            request.setValue("Bearer \(supabaseAPIKey)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AuthError.networkError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 200 {
+            let mealLogs = try JSONDecoder().decode([SupabaseMealLog].self, from: data)
+            return mealLogs.map { $0.toMealLog() }
+        }
+        
+        return []
+    }
+    
     // MARK: - Clear Session
     func clearSession() {
         UserDefaults.standard.removeObject(forKey: "supabase_access_token")
         UserDefaults.standard.removeObject(forKey: "supabase_refresh_token")
         UserDefaults.standard.removeObject(forKey: "supabase_expires_at")
         UserDefaults.standard.removeObject(forKey: "supabase_user_id")
+    }
+}
+
+// MARK: - Meal Log Models
+struct MealLog {
+    let id: UUID
+    let food: FoodItem
+    let portion: Double
+    let timestamp: Date
+    
+    init(id: UUID = UUID(), food: FoodItem, portion: Double, timestamp: Date) {
+        self.id = id
+        self.food = food
+        self.portion = portion
+        self.timestamp = timestamp
+    }
+    
+    // Convert from LoggedFood
+    init(from loggedFood: LoggedFood) {
+        self.id = loggedFood.id
+        self.food = loggedFood.food
+        self.portion = loggedFood.portion
+        self.timestamp = loggedFood.timestamp
+    }
+    
+    // Convert to LoggedFood
+    func toLoggedFood() -> LoggedFood {
+        return LoggedFood(id: id, food: food, portion: portion, timestamp: timestamp)
+    }
+}
+
+struct SupabaseMealLog: Codable {
+    let id: String
+    let userId: String?
+    let foodId: Int?
+    let foodName: String?
+    let calories: Int?
+    let protein: Double?
+    let carbs: Double?
+    let fats: Double?
+    let category: String?
+    let portion: Double?
+    let loggedAt: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case foodId = "food_id"
+        case foodName = "food_name"
+        case calories
+        case protein
+        case carbs
+        case fats
+        case category
+        case portion
+        case loggedAt = "logged_at"
+    }
+    
+    func toMealLog() -> MealLog {
+        let formatter = ISO8601DateFormatter()
+        let date = loggedAt.flatMap { formatter.date(from: $0) } ?? Date()
+        
+        return MealLog(
+            id: UUID(uuidString: id) ?? UUID(),
+            food: FoodItem(
+                id: foodId ?? 0,
+                name: foodName ?? "Unknown",
+                calories: calories ?? 0,
+                protein: protein ?? 0,
+                carbs: carbs ?? 0,
+                fats: fats ?? 0,
+                category: category ?? "Unknown",
+                usdaFood: nil
+            ),
+            portion: portion ?? 1.0,
+            timestamp: date
+        )
     }
 }
 

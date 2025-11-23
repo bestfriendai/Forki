@@ -1197,6 +1197,30 @@ class PersonaRecipeService {
         let recipes = recipesForPersona(persona)
         guard recipes.count >= 7 else { return recipes }
         
+        // Calculate current week number for weekly rotation
+        // Uses the same calculation as notifications/challenges for consistency
+        // Week calculation: days since signup / 7 (matching NutritionState and PersonaWeeklyChallenges)
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Try to get signup date (stored as Date) - matches NutritionState
+        var signupDate: Date?
+        if let signup = UserDefaults.standard.object(forKey: "hp_signupDate") as? Date {
+            signupDate = signup
+        } else if let onboardingTimestamp = UserDefaults.standard.object(forKey: "hp_onboardingStartDate") as? TimeInterval {
+            // hp_onboardingStartDate is stored as TimeInterval - matches PersonaWeeklyChallenges
+            signupDate = Date(timeIntervalSince1970: onboardingTimestamp)
+        }
+        
+        // Use signup date or current date as fallback
+        let referenceDate = signupDate ?? now
+        
+        // Calculate weeks since signup using same method as notifications (days / 7)
+        // This ensures weekly meal plans rotate in sync with weekly challenges/notifications
+        let daysSinceSignup = calendar.dateComponents([.day], from: referenceDate, to: now).day ?? 0
+        let weekNumber = max(0, daysSinceSignup / 7) // 0-based week number (0 = first week, 1 = second week, etc.)
+        let weekSeed = UInt64(weekNumber) // Use week number as seed for deterministic but weekly-changing selection
+        
         // Day 1: Fast breakfast-friendly option
         // Day 2: Protein-dense
         // Day 3: Balanced bowl
@@ -1208,6 +1232,11 @@ class PersonaRecipeService {
         var plan: [PersonaRecipe] = []
         var usedIds: Set<UUID> = []
         
+        // Shuffle recipes based on week number for variety
+        var shuffledRecipes = recipes
+        var generator = SeededRandomNumberGenerator(seed: weekSeed)
+        shuffledRecipes.shuffle(using: &generator)
+        
         // Helper to add recipe if not already used
         func addIfNotUsed(_ recipe: PersonaRecipe?) {
             if let recipe = recipe, !usedIds.contains(recipe.id) {
@@ -1216,8 +1245,8 @@ class PersonaRecipeService {
             }
         }
         
-        // Find breakfast-friendly (usually first few recipes)
-        let breakfast = recipes.first(where: { recipe in
+        // Find breakfast-friendly (usually first few recipes) - use shuffled recipes
+        let breakfast = shuffledRecipes.first(where: { recipe in
             !usedIds.contains(recipe.id) && (
                 recipe.title.lowercased().contains("oat") ||
                 recipe.title.lowercased().contains("yogurt") ||
@@ -1226,53 +1255,53 @@ class PersonaRecipeService {
                 recipe.title.lowercased().contains("smoothie")
             )
         })
-        addIfNotUsed(breakfast ?? recipes.first(where: { !usedIds.contains($0.id) }))
+        addIfNotUsed(breakfast ?? shuffledRecipes.first(where: { !usedIds.contains($0.id) }))
         
-        // Find protein-dense (highest protein, not used)
-        let proteinDense = recipes.filter { !usedIds.contains($0.id) }.max(by: { $0.protein < $1.protein })
-        addIfNotUsed(proteinDense ?? recipes.first(where: { !usedIds.contains($0.id) }))
+        // Find protein-dense (highest protein, not used) - use shuffled recipes
+        let proteinDense = shuffledRecipes.filter { !usedIds.contains($0.id) }.max(by: { $0.protein < $1.protein })
+        addIfNotUsed(proteinDense ?? shuffledRecipes.first(where: { !usedIds.contains($0.id) }))
         
-        // Find balanced bowl
-        let bowl = recipes.first(where: { recipe in
+        // Find balanced bowl - use shuffled recipes
+        let bowl = shuffledRecipes.first(where: { recipe in
             !usedIds.contains(recipe.id) && (
                 recipe.title.lowercased().contains("bowl") ||
                 recipe.title.lowercased().contains("bento")
             )
         })
-        addIfNotUsed(bowl ?? recipes.first(where: { !usedIds.contains($0.id) }))
+        addIfNotUsed(bowl ?? shuffledRecipes.first(where: { !usedIds.contains($0.id) }))
         
-        // Find quick meal (lowest time, not used)
-        let quick = recipes.filter { !usedIds.contains($0.id) }.min(by: { $0.timeMinutes > $1.timeMinutes })
-        addIfNotUsed(quick ?? recipes.first(where: { !usedIds.contains($0.id) }))
+        // Find quick meal (lowest time, not used) - use shuffled recipes
+        let quick = shuffledRecipes.filter { !usedIds.contains($0.id) }.min(by: { $0.timeMinutes > $1.timeMinutes })
+        addIfNotUsed(quick ?? shuffledRecipes.first(where: { !usedIds.contains($0.id) }))
         
-        // Find higher protein dinner
-        let dinnerOptions = recipes.filter { !usedIds.contains($0.id) && $0.protein >= 30 }
+        // Find higher protein dinner - use shuffled recipes
+        let dinnerOptions = shuffledRecipes.filter { !usedIds.contains($0.id) && $0.protein >= 30 }
         let dinner = dinnerOptions.max(by: { $0.protein < $1.protein })
-        addIfNotUsed(dinner ?? recipes.first(where: { !usedIds.contains($0.id) }))
+        addIfNotUsed(dinner ?? shuffledRecipes.first(where: { !usedIds.contains($0.id) }))
         
-        // Find snack-focused (usually lower calories)
-        let snack = recipes.first(where: { recipe in
+        // Find snack-focused (usually lower calories) - use shuffled recipes
+        let snack = shuffledRecipes.first(where: { recipe in
             !usedIds.contains(recipe.id) && (
                 recipe.title.lowercased().contains("snack") ||
                 recipe.title.lowercased().contains("wrap") ||
                 recipe.calories < 300
             )
         })
-        addIfNotUsed(snack ?? recipes.first(where: { !usedIds.contains($0.id) }))
+        addIfNotUsed(snack ?? shuffledRecipes.first(where: { !usedIds.contains($0.id) }))
         
-        // Find reset meal (light + nourishing, usually lower calories)
-        let reset = recipes.first(where: { recipe in
+        // Find reset meal (light + nourishing, usually lower calories) - use shuffled recipes
+        let reset = shuffledRecipes.first(where: { recipe in
             !usedIds.contains(recipe.id) && (
                 recipe.title.lowercased().contains("salad") ||
                 recipe.title.lowercased().contains("soup") ||
                 (recipe.calories < 300 && recipe.protein >= 15)
             )
         })
-        addIfNotUsed(reset ?? recipes.first(where: { !usedIds.contains($0.id) }))
+        addIfNotUsed(reset ?? shuffledRecipes.first(where: { !usedIds.contains($0.id) }))
         
-        // Fill remaining slots if needed
-        while plan.count < 7 && plan.count < recipes.count {
-            if let next = recipes.first(where: { !usedIds.contains($0.id) }) {
+        // Fill remaining slots if needed - use shuffled recipes
+        while plan.count < 7 && plan.count < shuffledRecipes.count {
+            if let next = shuffledRecipes.first(where: { !usedIds.contains($0.id) }) {
                 plan.append(next)
                 usedIds.insert(next.id)
             } else {
@@ -1286,6 +1315,21 @@ class PersonaRecipeService {
     // All recipes flattened for "All Recipes" tab
     var allRecipes: [PersonaRecipe] {
         return allPersonaRecipes.values.flatMap { $0 }
+    }
+}
+
+// MARK: - Seeded Random Number Generator
+// For deterministic shuffling based on week number
+struct SeededRandomNumberGenerator: RandomNumberGenerator {
+    private var state: UInt64
+    
+    init(seed: UInt64) {
+        self.state = seed
+    }
+    
+    mutating func next() -> UInt64 {
+        state = state &* 1103515245 &+ 12345
+        return state
     }
 }
 

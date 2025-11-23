@@ -7,6 +7,7 @@ import AVFoundation
 /// Public SwiftUI surface for CalorieCameraKit that reacts to feature flags.
 public struct CalorieCameraView: View {
     @StateObject private var coordinator: CalorieCameraCoordinator
+    @Environment(\.dismiss) private var dismiss
 
 
     public init(
@@ -30,13 +31,16 @@ public struct CalorieCameraView: View {
             if let session = coordinator.previewSession {
                 CameraPreviewContainer(session: session)
                     .ignoresSafeArea()
+                    .allowsHitTesting(false) // Don't intercept touches - let UI overlay handle them
             } else {
                 CameraPreviewPlaceholder(status: coordinator.statusMessage)
                     .ignoresSafeArea()
+                    .allowsHitTesting(false)
             }
 #else
             CameraPreviewPlaceholder(status: coordinator.statusMessage)
                 .ignoresSafeArea()
+                .allowsHitTesting(false)
 #endif
 
             // Overlay UI on top of camera
@@ -173,7 +177,12 @@ public struct CalorieCameraView: View {
                 HStack(spacing: 16) {
                     // Secondary Button (left): Cancel (Forki theme: surface with border)
                     Button {
+                        NSLog("🔴 [CalorieCamera] Cancel button tapped")
+                        print("🔴 [CalorieCamera] Cancel button tapped")
+                        // Call coordinator cancel for cleanup
                         coordinator.cancel()
+                        // Dismiss the view directly
+                        dismiss()
                     } label: {
                         Text("Cancel")
                             .font(.system(size: 18, weight: .semibold, design: .rounded))
@@ -185,19 +194,21 @@ public struct CalorieCameraView: View {
                                     .fill(Color(red: 0.10, green: 0.14, blue: 0.20).opacity(0.4)) // Forki surface
                                     .overlay(
                                         Capsule(style: .continuous)
-                                            .stroke(Color(red: 0.48, green: 0.41, blue: 0.77).opacity(0.4), lineWidth: 2) // Forki borderPrimary
+                                            .stroke(Color.white.opacity(0.2), lineWidth: 1) // More transparent, thinner border
                                     )
                             )
                     }
                     .disabled(!coordinator.canCancel)
                     .opacity(coordinator.canCancel ? 1.0 : 0.5)
+                    .contentShape(Rectangle()) // Ensure entire button area is tappable
+                    .allowsHitTesting(true) // Explicitly enable hit testing
                     
-                    // Primary Button (right): Scan Food - matches Intro Screen "Let's Get Started" button
+                    // Primary Button (right): Scan Food - matches Log Food button font
                     Button {
                         coordinator.startCapture()
                     } label: {
                         Text("Scan Food")
-                            .font(.system(size: 16, weight: .heavy, design: .rounded))
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 18)
@@ -274,12 +285,8 @@ private final class CalorieCameraCoordinator: ObservableObject {
     }
 
     var canCancel: Bool {
-        switch state {
-        case .capturing, .awaitingVoI:
-            return true
-        default:
-            return false
-        }
+        // Cancel button should always be enabled to allow dismissing the camera
+        return true
     }
 
     var isCapturing: Bool {
@@ -380,6 +387,10 @@ private final class CalorieCameraCoordinator: ObservableObject {
     }
 
     func cancel() {
+        NSLog("🔴 [CalorieCamera] cancel() called, state: \(state)")
+        print("🔴 [CalorieCamera] cancel() called, state: \(state)")
+        
+        // Always allow canceling to dismiss the camera screen
         switch state {
         case .capturing, .awaitingVoI:
             state = .idle
@@ -388,10 +399,22 @@ private final class CalorieCameraCoordinator: ObservableObject {
             qualityProgress = 0.0
             pendingResult = nil
             voiQuestion = nil
-            onCancel?()
         default:
-            break
+            // Reset state for any other state
+            state = .idle
+            statusMessage = "Ready to capture."
+            qualityEstimator.reset()
+            qualityProgress = 0.0
+            pendingResult = nil
+            voiQuestion = nil
         }
+        
+        NSLog("🔴 [CalorieCamera] Calling onCancel callback")
+        print("🔴 [CalorieCamera] Calling onCancel callback")
+        // Always call onCancel to dismiss the camera screen
+        onCancel?()
+        NSLog("🔴 [CalorieCamera] onCancel callback completed")
+        print("🔴 [CalorieCamera] onCancel callback completed")
     }
 
     func teardown() {
@@ -1224,6 +1247,7 @@ private struct CameraPreviewContainer: UIViewRepresentable {
 
     func makeUIView(context: Context) -> PreviewView {
         let view = PreviewView()
+        view.isUserInteractionEnabled = false // Don't intercept touches - let SwiftUI overlay handle them
         configure(layer: view.videoPreviewLayer)
         return view
     }

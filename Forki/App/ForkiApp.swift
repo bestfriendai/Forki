@@ -26,6 +26,12 @@ struct ForkiApp: App {
                 .environmentObject(userData)
                 .environmentObject(nutrition)
                 .onAppear {
+                    #if DEBUG
+                    // Reset app to first-time user state for testing
+                    // Comment out the line below if you don't want automatic reset
+                    UserDefaults.resetFirstTimeUserFlags()
+                    #endif
+                    
                     // Update nutrition goal if userData has a different recommendedCalories
                     if userData.recommendedCalories > 0 && userData.recommendedCalories != nutrition.caloriesGoal {
                         nutrition.setGoal(userData.recommendedCalories)
@@ -34,6 +40,8 @@ struct ForkiApp: App {
                     if userData.personaID > 0 {
                         nutrition.personaID = userData.personaID
                     }
+                    // Check for daily challenge notifications
+                    NotificationEngine.shared.sendDailyChallengeIfNeeded()
                 }
         }
     }

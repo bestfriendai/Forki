@@ -86,20 +86,29 @@ struct HeightScreen: View {
                         if data.heightUnit == .feet {
                             HStack(spacing: 16) {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    TextField("5", text: $data.heightFeet)
-                                        .font(.system(size: 48, weight: .heavy, design: .rounded))
-                                        .foregroundColor(ForkiTheme.textPrimary)
-                                        .keyboardType(.numberPad)
-                                        .textInputAutocapitalization(.never)
-                                        .autocorrectionDisabled()
-                                        .focused($isFeetFocused)
-                                        .multilineTextAlignment(.center)
-                                        .frame(maxWidth: .infinity)
-                                        .textFieldStyle(PlainTextFieldStyle())
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            isFeetFocused = true
+                                    ZStack {
+                                        if data.heightFeet.isEmpty {
+                                            Text("5")
+                                                .font(.system(size: 48, weight: .heavy, design: .rounded))
+                                                .foregroundColor(ForkiTheme.textSecondary.opacity(0.4))
+                                                .multilineTextAlignment(.center)
                                         }
+                                        
+                                        TextField("", text: $data.heightFeet)
+                                            .font(.system(size: 48, weight: .heavy, design: .rounded))
+                                            .foregroundColor(ForkiTheme.textPrimary)
+                                            .keyboardType(.numberPad)
+                                            .textInputAutocapitalization(.never)
+                                            .autocorrectionDisabled()
+                                            .focused($isFeetFocused)
+                                            .multilineTextAlignment(.center)
+                                            .frame(maxWidth: .infinity)
+                                            .textFieldStyle(PlainTextFieldStyle())
+                                            .contentShape(Rectangle())
+                                            .onTapGesture {
+                                                isFeetFocused = true
+                                            }
+                                    }
                                         .onAppear {
                                             // Auto-focus feet field when screen appears for quick entry
                                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -117,11 +126,9 @@ struct HeightScreen: View {
                                             
                                             // Auto-focus to inches when valid feet value is entered
                                             if let feet = Int(filtered), feet >= 3 && feet <= 8 {
-                                                // Small delay to allow user to finish typing
-                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                                    isFeetFocused = false
-                                                    isInchesFocused = true
-                                                }
+                                                // Directly set inches focus - this keeps the keyboard visible
+                                                // SwiftUI will handle the focus transition smoothly
+                                                isInchesFocused = true
                                             }
                                         }
                                         .onChange(of: data.heightUnit) { _, _ in
@@ -144,20 +151,29 @@ struct HeightScreen: View {
                                 }
                                 
                                 VStack(alignment: .leading, spacing: 8) {
-                                    TextField("3", text: $data.heightInches)
-                                        .font(.system(size: 48, weight: .heavy, design: .rounded))
-                                        .foregroundColor(ForkiTheme.textPrimary)
-                                        .keyboardType(.numberPad)
-                                        .textInputAutocapitalization(.never)
-                                        .autocorrectionDisabled()
-                                        .focused($isInchesFocused)
-                                        .multilineTextAlignment(.center)
-                                        .frame(maxWidth: .infinity)
-                                        .textFieldStyle(PlainTextFieldStyle())
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            isInchesFocused = true
+                                    ZStack {
+                                        if data.heightInches.isEmpty {
+                                            Text("4")
+                                                .font(.system(size: 48, weight: .heavy, design: .rounded))
+                                                .foregroundColor(ForkiTheme.textSecondary.opacity(0.4))
+                                                .multilineTextAlignment(.center)
                                         }
+                                        
+                                        TextField("", text: $data.heightInches)
+                                            .font(.system(size: 48, weight: .heavy, design: .rounded))
+                                            .foregroundColor(ForkiTheme.textPrimary)
+                                            .keyboardType(.numberPad)
+                                            .textInputAutocapitalization(.never)
+                                            .autocorrectionDisabled()
+                                            .focused($isInchesFocused)
+                                            .multilineTextAlignment(.center)
+                                            .frame(maxWidth: .infinity)
+                                            .textFieldStyle(PlainTextFieldStyle())
+                                            .contentShape(Rectangle())
+                                            .onTapGesture {
+                                                isInchesFocused = true
+                                            }
+                                    }
                                         .onChange(of: data.heightInches) { _, newValue in
                                             // Filter to allow only numeric input
                                             let filtered = newValue.filter { $0.isNumber }
@@ -179,20 +195,29 @@ struct HeightScreen: View {
                             .padding(.horizontal, 6)
                         } else {
                             VStack(alignment: .leading, spacing: 8) {
-                                TextField("170", text: $data.heightCm)
-                                    .font(.system(size: 48, weight: .heavy, design: .rounded))
-                                    .foregroundColor(ForkiTheme.textPrimary)
-                                    .keyboardType(.numberPad)
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled()
-                                    .focused($isCmFocused)
-                                    .multilineTextAlignment(.center)
-                                    .frame(maxWidth: .infinity)
-                                    .textFieldStyle(PlainTextFieldStyle())
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        isCmFocused = true
+                                ZStack {
+                                    if data.heightCm.isEmpty {
+                                        Text("163")
+                                            .font(.system(size: 48, weight: .heavy, design: .rounded))
+                                            .foregroundColor(ForkiTheme.textSecondary.opacity(0.4))
+                                            .multilineTextAlignment(.center)
                                     }
+                                    
+                                    TextField("", text: $data.heightCm)
+                                        .font(.system(size: 48, weight: .heavy, design: .rounded))
+                                        .foregroundColor(ForkiTheme.textPrimary)
+                                        .keyboardType(.numberPad)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                        .focused($isCmFocused)
+                                        .multilineTextAlignment(.center)
+                                        .frame(maxWidth: .infinity)
+                                        .textFieldStyle(PlainTextFieldStyle())
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            isCmFocused = true
+                                        }
+                                }
                                     .onAppear {
                                         // Auto-focus cm field when screen appears for quick entry
                                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {

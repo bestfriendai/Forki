@@ -16,19 +16,16 @@ struct PrivacyPolicyView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
+                
                 // Navigation Bar
                 HStack {
                     if let onDismiss = onDismiss {
-                        Button {
-                            onDismiss()
-                        } label: {
+                        Button { onDismiss() } label: {
                             Image(systemName: "xmark")
                                 .font(.title2)
                                 .foregroundColor(ForkiTheme.textPrimary)
                         }
-                    } else {
-                        Spacer()
-                    }
+                    } else { Spacer() }
                     
                     Spacer()
                     
@@ -39,161 +36,293 @@ struct PrivacyPolicyView: View {
                     Spacer()
                     
                     if onDismiss != nil {
-                        Color.clear
-                            .frame(width: 24, height: 24)
-                    } else {
-                        Spacer()
-                    }
+                        Color.clear.frame(width: 24, height: 24)
+                    } else { Spacer() }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
                 .padding(.bottom, 16)
                 
-                // Content
+                
+                // CONTENT
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
-                        // CARD 1 — Introduction
+                        
+                        // CARD 1 — INTRODUCTION
                         VStack(alignment: .leading, spacing: 12) {
+                            
                             Text("Last Updated: November 2025")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textSecondary)
                             
-                            Text("Forki is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and protect personal information. By using the Forki mobile application, you agree to the practices described below.")
+                            Text("""
+Your privacy is important to us. This Privacy Policy explains how Forki (“we,” “us,” or “our”) collects, uses, and protects personal information. By using the Forki mobile application, you agree to the practices described below.
+""")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
+                            
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .background(panel)
                         .padding(.horizontal, 24)
                         
-                        // CARD 2 — Section 1: Information We Collect
+                        
+                        // CARD 2 — SECTION 1: INFORMATION WE COLLECT
                         VStack(alignment: .leading, spacing: 16) {
+                            
                             Text("1. Information We Collect")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
                             
+                            Text("""
+We collect only the information necessary to provide the core features of Forki and improve the user experience. Before or at the time information is collected, we will identify the purposes for which it is being used.
+""")
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .foregroundColor(ForkiTheme.textPrimary)
+                            
+                            // Information You Provide
                             Text("Information You Provide")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
                             
-                            Text("We may collect the following information directly from you to personalize your experience and generate your Wellness Snapshot:\n\n• Name (used to personalize the app experience)\n• Age, gender, height, and weight (used to calculate BMI and provide recommendations)\n• Eating habits and lifestyle inputs (used to determine your persona)\n• Meal logs, notes, and manually entered foods (used to track progress)\n\nForki collects only the information necessary to support app functionality.")
+                            Text("""
+● Name (used to personalize the in-app experience)
+● Age, gender, height, and weight (used to calculate BMI and create your Wellness Snapshot)
+● Eating habits and lifestyle inputs (used to determine your persona and recommendations)
+● Manually entered or logged meals
+● Notes related to food entries
+
+This information is used only to support functionality within the app.
+""")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
                             
-                            Text("Camera Access (AI Food Logging)")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            // Camera Access
+                            Text("Camera Access")
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
-                                .padding(.top, 8)
                             
-                            Text("Forki requests camera access only so you can take photos of meals for calorie and nutrient estimation.\n\n• The camera is used only when you take a photo.\n• Images are analyzed and not stored or reused unless you save them.\n• Forki never accesses the camera in the background.")
+                            Text("""
+Forki requests camera access solely to allow you to capture photos of meals for calorie and nutrient estimation.
+
+● Camera access is used only when you take a photo.
+● Images are processed for analysis and are not stored or reused unless you explicitly save them.
+● Forki does not access your camera in the background.
+""")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
                             
+                            
+                            // Not Collected
                             Text("Information We Do Not Collect")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
-                                .padding(.top, 8)
                             
-                            Text("Forki does not collect:\n\n• GPS or device location\n• Contacts or messages\n• Photo library (unless you choose an image)\n• HealthKit data\n• Payment information\n• Biometric identifiers")
+                            Text("""
+Forki does not collect or access:
+
+● Device location or GPS
+● Contacts, messages, or personal files
+● Photos or your photo library
+● Payment or financial information
+● Biometric identifiers
+● HealthKit data
+""")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
+                            
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .background(panel)
                         .padding(.horizontal, 24)
                         
-                        // CARD 3 — Section 2: Use of Information
-                        VStack(alignment: .leading, spacing: 12) {
+                        
+                        // CARD 3 — USE OF INFORMATION
+                        VStack(alignment: .leading, spacing: 16) {
+                            
                             Text("2. Use of Information")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
                             
-                            Text("We use your information to:\n\n• Generate your Wellness Snapshot\n• Track calories, meals, and progress\n• Support habit-building features like streaks\n• Personalize Forki's animations and responses\n• Improve app functionality\n\nInformation is used solely for these purposes.")
+                            Text("""
+We use the information you provide for the following purposes:
+
+● Generating your Wellness Snapshot and recommendations
+● Tracking meals, calories, and macronutrients
+● Supporting habit-building features such as streaks and consistency tracking
+● Powering the companion pet’s responses
+● Improving the overall functionality of the app
+
+Information will be used only for these purposes unless additional consent is obtained or required by law.
+""")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
+                            
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .background(panel)
                         .padding(.horizontal, 24)
                         
-                        // CARD 4 — Section 3: Data Retention
-                        VStack(alignment: .leading, spacing: 12) {
+                        
+                        // CARD 4 — DATA RETENTION
+                        VStack(alignment: .leading, spacing: 16) {
+                            
                             Text("3. Data Retention")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
                             
-                            Text("We retain your information only as long as needed for app features. You may delete your data manually or by uninstalling the app.")
+                            Text("""
+We retain personal information only as long as necessary to fulfill the purposes for which it was collected.
+
+You may clear your information manually or delete all data by uninstalling the app.
+""")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
+                            
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .background(panel)
                         .padding(.horizontal, 24)
                         
-                        // CARD 5 — Section 4: Data Security
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("4. Data Security")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                        
+                        // CARD 5 — DATA PROTECTION
+                        VStack(alignment: .leading, spacing: 16) {
+                            
+                            Text("4. Data Protection")
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
                             
-                            Text("We use reasonable security measures to protect your data from unauthorized access, loss, or misuse. However, no system is completely secure.")
+                            Text("""
+We use reasonable security safeguards to protect personal information against loss, theft, unauthorized access, disclosure, copying, use, or modification.
+
+While we take appropriate precautions, no method of electronic storage or transmission is completely secure.
+""")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
+                            
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .background(panel)
                         .padding(.horizontal, 24)
                         
-                        // CARD 6 — Section 5: Third-Party Services
-                        VStack(alignment: .leading, spacing: 12) {
+                        
+                        // CARD 6 — THIRD-PARTY SERVICES
+                        VStack(alignment: .leading, spacing: 16) {
+                            
                             Text("5. Third-Party Services")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
                             
-                            Text("Forki may use trusted third-party services to analyze meal images. They may not store images or use them for advertising or unrelated AI training.")
+                            Text("""
+Forki may use third-party services to process meal images for calorie estimation. These services are required to:
+
+● Use the images only for processing your request
+● Not store images
+● Not use the images for advertising or unrelated model training
+
+We do not sell or share your personal information with any third parties.
+""")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
+                            
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .background(panel)
                         .padding(.horizontal, 24)
                         
-                        // CARD 7 — Section 6: Children's Privacy
-                        VStack(alignment: .leading, spacing: 12) {
+                        
+                        // CARD 7 — CHILDREN'S PRIVACY
+                        VStack(alignment: .leading, spacing: 16) {
+                            
                             Text("6. Children's Privacy")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
                             
-                            Text("Forki is intended for users 13 and older. We do not knowingly collect information from children under 13.")
+                            Text("""
+Forki is intended for individuals aged 13 and older.
+
+We do not knowingly collect information from children under 13.
+""")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
+                            
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .background(panel)
                         .padding(.horizontal, 24)
                         
-                        // CARD 8 — Section 7: Contact Us
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("7. Contact Us")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                        
+                        // CARD 8 — TRANSPARENCY
+                        VStack(alignment: .leading, spacing: 16) {
+                            
+                            Text("7. Transparency")
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
                             
-                            Text("If you have questions about this Privacy Policy, contact us at:\njanicechung@usc.edu")
+                            Text("""
+We will make information about our privacy practices available to users upon request.
+
+You may contact us at any time with questions regarding how your information is collected or used.
+""")
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .foregroundColor(ForkiTheme.textPrimary)
+                            
                         }
+                        .padding(20)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(panel)
+                        .padding(.horizontal, 24)
+                        
+                        
+                        // CARD 9 — POLICY CHANGES
+                        VStack(alignment: .leading, spacing: 16) {
+                            
+                            Text("8. Policy Changes")
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(ForkiTheme.textPrimary)
+                            
+                            Text("""
+We may update this Privacy Policy as needed.
+
+Revisions will be posted within the app. By continuing to use Forki, you agree to the current version of the policy.
+""")
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .foregroundColor(ForkiTheme.textPrimary)
+                            
+                        }
+                        .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(panel)
+                        .padding(.horizontal, 24)
+                        
+                        
+                        // CARD 10 — CONTACT INFORMATION
+                        VStack(alignment: .leading, spacing: 16) {
+                            
+                            Text("9. Contact Information")
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(ForkiTheme.textPrimary)
+                            
+                            Text("""
+For questions or concerns about this Privacy Policy, you may contact us at:
+📧 janicechung@usc.edu
+""")
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .foregroundColor(ForkiTheme.textPrimary)
+                            
+                        }
                         .padding(20)
                         .background(panel)
                         .padding(.horizontal, 24)
                         .padding(.bottom, 24)
+                        
                     }
                     .padding(.top, 8)
                 }
@@ -201,6 +330,7 @@ struct PrivacyPolicyView: View {
         }
     }
     
+    // Same panel styling as Terms of Service
     private var panel: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
             .fill(ForkiTheme.surface.opacity(0.9))
@@ -210,3 +340,4 @@ struct PrivacyPolicyView: View {
             )
     }
 }
+

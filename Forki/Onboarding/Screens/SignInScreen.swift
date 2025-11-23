@@ -328,6 +328,10 @@ struct SignInScreen: View {
                             userData.metabolism = loadedUserData.metabolism
                             userData.recommendedMacros = loadedUserData.recommendedMacros
                             
+                            // CRITICAL: Save basic info to UserDefaults to ensure persistence
+                            // This saves age, gender, height, weight, goal for Profile Card
+                            loadedUserData.saveBasicInfo()
+                            
                             // Also save locally (continue to save userData as we already do)
                             UserDefaults.standard.set(username, forKey: "hp_userEmail")
                             UserDefaults.standard.set(userData.name, forKey: "hp_userName")
@@ -335,12 +339,38 @@ struct SignInScreen: View {
                             UserDefaults.standard.set(loadedUserData.personaID, forKey: "hp_personaID")
                             UserDefaults.standard.set(loadedUserData.recommendedCalories, forKey: "hp_recommendedCalories")
                             
+                            NSLog("✅ [SignIn] Loaded profile data from Supabase - name: \(userData.name), persona: \(userData.personaID), calories: \(userData.recommendedCalories)")
+                            
                             // Initialize nutrition state with persona and calories to restore avatar state
+                            // clearMeals: false - preserve existing meal logs (will load from Supabase)
                             if loadedUserData.personaID > 0 && loadedUserData.recommendedCalories > 0 {
                                 userData.nutrition.initializeFromSnapshot(
                                     personaID: loadedUserData.personaID,
-                                    recommendedCalories: loadedUserData.recommendedCalories
+                                    recommendedCalories: loadedUserData.recommendedCalories,
+                                    clearMeals: false // Don't clear - load from Supabase
                                 )
+                            }
+                            
+                            // Load meal logs from Supabase to restore user's meal history
+                            // This will calculate avatar state and battery life from the loaded meals
+                            Task {
+                                await userData.nutrition.loadMealLogsFromSupabase()
+                                
+                                // After loading meal logs, update avatar state if needed (time-based checks)
+                                await MainActor.run {
+                                    // Update avatar state based on current time and loaded meal logs
+                                    // This handles time-based checks (e.g., 6pm starving) and ensures
+                                    // avatar state is correct based on current conditions
+                                    userData.nutrition.updateAvatarStateIfNeeded()
+                                    
+                                    NSLog("✅ [SignIn] Session fully restored:")
+                                    NSLog("   📊 Meals: \(userData.nutrition.loggedMeals.count)")
+                                    NSLog("   🔋 Calories: \(userData.nutrition.caloriesCurrent)/\(userData.nutrition.caloriesGoal)")
+                                    NSLog("   🎭 Avatar: \(userData.nutrition.avatarState.rawValue)")
+                                    NSLog("   ⚡ Battery: \(userData.nutrition.avatarEnergyPercentage)%")
+                                    NSLog("   👤 Profile: \(userData.name), Persona: \(userData.personaID)")
+                                    NSLog("   📈 Wellness: BMI \(userData.BMI), \(userData.bodyType), \(userData.metabolism)")
+                                }
                             }
                         }
                     } else {
@@ -359,6 +389,8 @@ struct SignInScreen: View {
                         // The user's data and session are now loaded
                         UserDefaults.standard.set(true, forKey: "hp_isSignedIn")
                         UserDefaults.standard.set(true, forKey: "hp_hasOnboarded") // Mark as onboarded if they have data
+                        // Clear justCompletedOnboarding flag for existing users signing in
+                        UserDefaults.standard.justCompletedOnboarding = false
                         
                         // Navigate to Home Screen (screen 6)
                         withAnimation(.easeInOut) { 

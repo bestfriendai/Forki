@@ -42,20 +42,23 @@
 		91B09B8B2E796A7200844B9D /* ForkiUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ForkiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9177D9382ED03F8A00D82101 /* Exceptions for "Forki" folder in "Forki" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 91B09B722E796A7100844B9D /* Forki */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		91B09B752E796A7100844B9D /* Forki */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9177D9382ED03F8A00D82101 /* Exceptions for "Forki" folder in "Forki" target */,
+			);
 			path = Forki;
-			sourceTree = "<group>";
-		};
-		91B09B842E796A7200844B9D /* HabitPetTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = HabitPetTests;
-			sourceTree = "<group>";
-		};
-		91B09B8E2E796A7200844B9D /* HabitPetUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = HabitPetUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -98,8 +101,6 @@
 			isa = PBXGroup;
 			children = (
 				91B09B752E796A7100844B9D /* Forki */,
-				91B09B842E796A7200844B9D /* HabitPetTests */,
-				91B09B8E2E796A7200844B9D /* HabitPetUITests */,
 				91B09B742E796A7100844B9D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -175,9 +176,6 @@
 			dependencies = (
 				91B09B832E796A7200844B9D /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				91B09B842E796A7200844B9D /* HabitPetTests */,
-			);
 			name = ForkiTests;
 			packageProductDependencies = (
 			);
@@ -197,9 +195,6 @@
 			);
 			dependencies = (
 				91B09B8D2E796A7200844B9D /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				91B09B8E2E796A7200844B9D /* HabitPetUITests */,
 			);
 			name = ForkiUITests;
 			packageProductDependencies = (
@@ -506,12 +501,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Forki/Forki.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = R7YF553FYX;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Forki/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Forki;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to capture food photos for calorie estimation";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -532,10 +529,11 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = 1;
 				XROS_DEPLOYMENT_TARGET = 2.5;
 			};
 			name = Debug;
@@ -547,12 +545,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Forki/Forki.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = R7YF553FYX;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Forki/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Forki;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to capture food photos for calorie estimation";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -573,10 +573,11 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = 1;
 				XROS_DEPLOYMENT_TARGET = 2.5;
 			};
 			name = Release;

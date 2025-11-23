@@ -42,6 +42,13 @@ class UserData: ObservableObject {
         // Load persisted name
         self.name = UserDefaults.standard.string(forKey: "hp_userName") ?? ""
         
+        // Load persisted basic info (age, gender, height, weight) - CRITICAL for Profile Card persistence
+        self.age = UserDefaults.standard.string(forKey: "hp_age") ?? ""
+        self.gender = UserDefaults.standard.string(forKey: "hp_gender") ?? ""
+        self.height = UserDefaults.standard.string(forKey: "hp_height") ?? ""
+        self.weight = UserDefaults.standard.string(forKey: "hp_weight") ?? ""
+        self.goal = UserDefaults.standard.string(forKey: "hp_goal") ?? ""
+        
         // Load persisted wellness snapshot data
         self.personaID = UserDefaults.standard.integer(forKey: "hp_personaID")
         if personaID == 0 {
@@ -77,6 +84,16 @@ class UserData: ObservableObject {
     func updateName(_ newName: String) {
         name = newName
         UserDefaults.standard.set(newName, forKey: "hp_userName")
+    }
+    
+    // MARK: - Persistence Methods for Basic Info
+    /// Saves age, gender, height, weight, and goal to UserDefaults to ensure they persist across app restarts
+    func saveBasicInfo() {
+        UserDefaults.standard.set(age, forKey: "hp_age")
+        UserDefaults.standard.set(gender, forKey: "hp_gender")
+        UserDefaults.standard.set(height, forKey: "hp_height")
+        UserDefaults.standard.set(weight, forKey: "hp_weight")
+        UserDefaults.standard.set(goal, forKey: "hp_goal")
     }
     
     func applySnapshot(_ snapshot: WellnessSnapshot) {

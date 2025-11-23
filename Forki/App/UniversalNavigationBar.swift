@@ -41,7 +41,7 @@ struct UniversalNavigationBar: View {
                                 .stroke(Color(hex: "#7B68C4"), lineWidth: 4) // Purple border matching theme
                         )
                         .shadow(color: Color(hex: "#8B5CF6").opacity(0.4), radius: 16, x: 0, y: 8)
-                    Image(systemName: "plus")
+                    Image(systemName: "camera.fill")
                         .font(.system(size: 28, weight: .heavy, design: .rounded))
                         .foregroundColor(.white)
                         .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 3)

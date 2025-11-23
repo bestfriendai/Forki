@@ -22,9 +22,14 @@ struct SparkleOverlayModifier: ViewModifier {
                         SparkleView(sparkleType: sparkleType)
                             .transition(.opacity)
                             .allowsHitTesting(false)
-                            .frame(width: 230, height: 230) // Constrain to avatar circle size
+                            .frame(
+                                width: sparkleType == .purpleConfetti ? 270 : 230, // Frame to surround avatar (200x200)
+                                height: sparkleType == .purpleConfetti ? 270 : 230 // Frame to surround avatar (200x200)
+                            )
                             .onAppear {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                // Longer duration for purple confetti to allow 2 loops
+                                let duration = sparkleType == .purpleConfetti ? 5.0 : 2.0
+                                DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
                                     withAnimation {
                                         showSparkle = false
                                     }

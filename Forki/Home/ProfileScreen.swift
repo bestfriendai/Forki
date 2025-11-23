@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import UserNotifications
+import UIKit
+import Combine
 
 struct ProfileScreen: View {
     let userData: UserData
@@ -28,6 +31,8 @@ struct ProfileScreen: View {
     @State private var showOnboarding = false
     @State private var showEditName = false
     @State private var editedName: String = ""
+    @State private var notificationsEnabled: Bool = false
+    @State private var isEditingOnboarding = false // Track if we're editing onboarding
     
     init(userData: UserData, nutrition: NutritionState? = nil, onDismiss: (() -> Void)? = nil, onHome: (() -> Void)? = nil, onExplore: (() -> Void)? = nil, onCamera: (() -> Void)? = nil, onProgress: (() -> Void)? = nil, onRetakeQuiz: (() -> Void)? = nil, onSignOut: (() -> Void)? = nil, onPrivacyPolicy: (() -> Void)? = nil, onTermsConditions: (() -> Void)? = nil) {
         self.userData = userData
@@ -153,8 +158,33 @@ struct ProfileScreen: View {
                         mainProfileContainer
                             .padding(.horizontal, 16)
                         
-                        // Privacy Policy & Terms
+                        // Notifications, Privacy Policy & Terms
                         VStack(spacing: 16) {
+                            // Notifications
+                            HStack {
+                                Text("Notifications")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundColor(ForkiTheme.textPrimary)
+                                
+                                Spacer()
+                                
+                                Toggle("", isOn: $notificationsEnabled)
+                                    .toggleStyle(ForkiToggleStyle())
+                                    .onChange(of: notificationsEnabled) { newValue in
+                                        handleNotificationToggle(newValue)
+                                    }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(ForkiTheme.panelBackground)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(ForkiTheme.borderPrimary.opacity(0.5), lineWidth: 2)
+                            )
+                            
                             // Privacy Policy
                             Button {
                                 showPrivacyPolicy = true
@@ -233,6 +263,14 @@ struct ProfileScreen: View {
         }
         .onAppear {
             calculateSnapshot()
+            checkNotificationPermission()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Update toggle state when app returns from Settings (smooth, no forced redirect)
+            // Small delay to ensure Settings has time to update
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                checkNotificationPermission()
+            }
         }
         .sheet(isPresented: $showPrivacyPolicy) {
             PrivacyPolicyView(onDismiss: {
@@ -258,7 +296,9 @@ struct ProfileScreen: View {
             OnboardingFlowWrapper(
                 userData: userData,
                 nutrition: nutrition,
+                isEditingMode: UserDefaults.standard.bool(forKey: "hp_editingMode"),
                 onDismiss: {
+                    UserDefaults.standard.set(false, forKey: "hp_editingMode")
                     showOnboarding = false
                 }
             ) { onboardingData in
@@ -273,6 +313,13 @@ struct ProfileScreen: View {
                 userData.notifications = convertedUserData.notifications
                 userData.selectedCharacter = convertedUserData.selectedCharacter
                 
+                // CRITICAL: Save basic info to UserDefaults to ensure persistence
+                userData.saveBasicInfo()
+                
+                // Calculate and apply wellness snapshot to ensure BMI, bodyType, metabolism, and eatingPattern are updated
+                let snapshot = WellnessSnapshotCalculator.calculateSnapshot(from: onboardingData)
+                userData.applySnapshot(snapshot)
+                
                 // Update persona ID and recommended calories
                 let personaID = onboardingData.personaIDValue
                 if personaID > 0 {
@@ -281,20 +328,45 @@ struct ProfileScreen: View {
                     nutrition.personaID = personaID
                 }
                 
-                let snapshot = WellnessSnapshotCalculator.calculateSnapshot(from: onboardingData)
                 UserDefaults.standard.set(snapshot.recommendedCalories, forKey: "hp_recommendedCalories")
                 nutrition.setGoal(snapshot.recommendedCalories)
                 
-                // Save updated data
-                UserDefaults.standard.set(true, forKey: "hp_isSignedIn")
-                UserDefaults.standard.set(true, forKey: "hp_hasOnboarded")
+                // Save updated data to Supabase
+                Task {
+                    if let userId = UserDefaults.standard.string(forKey: "supabase_user_id") {
+                        do {
+                            try await SupabaseAuthService.shared.saveUserData(
+                                userId: userId,
+                                userData: userData,
+                                onboardingData: onboardingData
+                            )
+                        } catch {
+                            print("Failed to save user data to Supabase: \(error)")
+                            // Continue anyway - local data is saved
+                        }
+                    }
+                }
                 
-                // Dismiss onboarding and navigate to Home Screen
+                // Check if we were editing onboarding BEFORE dismissing
+                let wasEditing = isEditingOnboarding || UserDefaults.standard.bool(forKey: "hp_editingMode")
+                
+                // Dismiss onboarding
                 showOnboarding = false
-                if let onHome = onHome {
-                    onHome()
-                } else if let onDismiss = onDismiss {
-                    onDismiss()
+                UserDefaults.standard.set(false, forKey: "hp_editingMode")
+                
+                // Recalculate snapshot for ProfileScreen display
+                calculateSnapshot()
+                
+                // Navigate appropriately based on editing state
+                if wasEditing {
+                    // Editing: stay on ProfileScreen (already visible, no navigation needed)
+                    isEditingOnboarding = false // Reset flag
+                    // Don't call onDismiss() - we're already on ProfileScreen
+                } else {
+                    // New user: go to Home
+                    if let onHome = onHome {
+                        onHome()
+                    }
                 }
             }
         }
@@ -305,13 +377,19 @@ struct ProfileScreen: View {
 private struct OnboardingFlowWrapper: View {
     @ObservedObject var userData: UserData
     @ObservedObject var nutrition: NutritionState
+    var isEditingMode: Bool = false
     var onDismiss: (() -> Void)? = nil
     let onComplete: (OnboardingData) -> Void
     
     var body: some View {
         // OnboardingFlow automatically starts at step 0 (AgeGenderScreen)
         // since OnboardingNavigator.currentStep defaults to 0
-        OnboardingFlow(userData: userData, onComplete: onComplete, onDismiss: onDismiss)
+        OnboardingFlow(
+            userData: userData,
+            onComplete: onComplete,
+            onDismiss: onDismiss,
+            isEditingMode: isEditingMode
+        )
     }
 }
 
@@ -326,20 +404,25 @@ extension ProfileScreen {
                     Image(systemName: "person.circle.fill")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 120, height: 120)
+                        .frame(width: 114, height: 114)
                         .foregroundColor(ForkiTheme.avatarRing.opacity(0.6))
                     
                     // Avatar video masked to circle
                     AvatarView(
                         state: nutrition.avatarState,
                         showFeedingEffect: .constant(false),
-                        size: 120
+                        size: 120,
+                        isCircular: true  // Circular frame - clip video to circle
                     )
                     .mask(
                         Circle()
                             .frame(width: 110, height: 110)
                     )
                     .frame(width: 110, height: 110)
+                    .onAppear {
+                        // Ensure avatar video auto-plays when Profile screen appears
+                        print("🎬 Avatar view appeared on Profile Screen - video should auto-play")
+                    }
                 }
                 
                 // User Name with Edit Icon
@@ -407,9 +490,10 @@ extension ProfileScreen {
                         
                         // Weight on right
                         if !userData.weight.isEmpty {
-                            let weightInKg = Int(userData.weight) ?? 0
-                            let weightInLbs = Int(CGFloat(weightInKg) * 2.20462)
-                            EmojiProfileRow(icon: "scalemass", label: "Weight", value: "\(weightInLbs) lbs (\(weightInKg) kg)")
+                            let weightInKg = Double(userData.weight) ?? 0.0
+                            let weightInLbs = weightInKg * 2.20462
+                            let weightInLbsRounded = Int(weightInLbs.rounded())
+                            EmojiProfileRow(icon: "scalemass", label: "Weight", value: "\(weightInLbsRounded) lbs (\(String(format: "%.1f", weightInKg)) kg)")
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
                             Spacer()
@@ -419,8 +503,11 @@ extension ProfileScreen {
                     
                     // Row 3: Body Type (left) | BMI (right)
                     HStack(alignment: .top, spacing: 20) {
-                        // Body Type on left
-                        if let bodyType = snapshot?.bodyType {
+                        // Body Type on left - use userData directly, fallback to snapshot
+                        if !userData.bodyType.isEmpty {
+                            EmojiProfileRow(icon: "person.fill", label: "Body Type", value: userData.bodyType)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else if let bodyType = snapshot?.bodyType, !bodyType.isEmpty {
                             EmojiProfileRow(icon: "person.fill", label: "Body Type", value: bodyType)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
@@ -428,8 +515,11 @@ extension ProfileScreen {
                                 .frame(maxWidth: .infinity)
                         }
                         
-                        // BMI on right
-                        if let bmi = snapshot?.BMI {
+                        // BMI on right - use userData directly, fallback to snapshot
+                        if userData.BMI > 0 {
+                            EmojiProfileRow(icon: "chart.bar.fill", label: "BMI", value: String(format: "%.1f", userData.BMI))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else if let bmi = snapshot?.BMI, bmi > 0 {
                             EmojiProfileRow(icon: "chart.bar.fill", label: "BMI", value: String(format: "%.1f", bmi))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
@@ -438,25 +528,35 @@ extension ProfileScreen {
                         }
                     }
                     
-                    // Row 4: Metabolism (left) | (right empty)
-                    HStack(alignment: .top, spacing: 20) {
-                        // Metabolism on left
-                        if let metabolism = snapshot?.metabolism {
-                            EmojiProfileRow(icon: "flame.fill", label: "Metabolism", value: metabolism)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        } else {
-                            Spacer()
-                                .frame(maxWidth: .infinity)
-                        }
-                        
-                        // Right side empty
-                        Spacer()
-                            .frame(maxWidth: .infinity)
+                    // Row 4: Metabolism (full width) - use userData directly, fallback to snapshot
+                    if !userData.metabolism.isEmpty {
+                        EmojiProfileRow(icon: "flame.fill", label: "Metabolism", value: userData.metabolism)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else if let metabolism = snapshot?.metabolism, !metabolism.isEmpty {
+                        EmojiProfileRow(icon: "flame.fill", label: "Metabolism", value: metabolism)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
                 
-                // Recommended Eating Pattern with icon
-                if let pattern = snapshot?.persona.suggestedPattern {
+                // Recommended Eating Pattern with icon - use userData directly, fallback to snapshot
+                if !userData.eatingPattern.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "fork.knife")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(ForkiTheme.highlightText)
+                            Text("Recommended Eating Pattern")
+                                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                .foregroundColor(ForkiTheme.textPrimary)
+                        }
+                        
+                        Text(userData.eatingPattern)
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundColor(ForkiTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let pattern = snapshot?.persona.suggestedPattern, !pattern.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 8) {
                             Image(systemName: "fork.knife")
@@ -479,7 +579,9 @@ extension ProfileScreen {
             
             // Edit button in top right corner
             Button {
-                // Reset onboarding navigator to start from beginning (case 0)
+                // Start onboarding WITHOUT Notification screen
+                UserDefaults.standard.set(true, forKey: "hp_editingMode")
+                isEditingOnboarding = true // Track that we're editing
                 showOnboarding = true
             } label: {
                 Text("Edit")
@@ -528,6 +630,71 @@ extension ProfileScreen {
         }
     }
     
+    // MARK: - Notification Functions
+    private func checkNotificationPermission() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                // Only update if value changed, and do it without animation
+                let newValue = settings.authorizationStatus == .authorized
+                if notificationsEnabled != newValue {
+                    var transaction = Transaction(animation: nil)
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        notificationsEnabled = newValue
+                    }
+                }
+            }
+        }
+    }
+    
+    private func handleNotificationToggle(_ enabled: Bool) {
+        if enabled {
+            // Check authorization status first
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                DispatchQueue.main.async {
+                    switch settings.authorizationStatus {
+                    case .notDetermined:
+                        // Show in-app permission popup
+                        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                            DispatchQueue.main.async {
+                                self.notificationsEnabled = granted
+                                if granted {
+                                    print("✅ Notification permissions granted")
+                                } else {
+                                    print("❌ Notification permissions denied")
+                                }
+                            }
+                        }
+                    case .denied:
+                        // Already denied - open Settings to re-enable
+                        if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(settingsUrl)
+                        }
+                        // Toggle will update when user returns from Settings
+                    case .authorized, .provisional, .ephemeral:
+                        // Already authorized - just ensure toggle is on
+                        self.notificationsEnabled = true
+                        print("✅ Notification permissions already granted")
+                    @unknown default:
+                        self.notificationsEnabled = false
+                    }
+                }
+            }
+        } else {
+            // User wants to disable notifications - open Settings
+            // Clear notifications first
+            UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+            UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+            
+            // Open Settings app to Forki notification settings
+            if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(settingsUrl)
+                // Note: Permission check will happen automatically when app returns to foreground
+                // via the willEnterForegroundNotification listener
+            }
+        }
+    }
+    
     // MARK: - Helper Functions
     private func calculateSnapshot() {
         // Convert UserData to OnboardingData to calculate snapshot
@@ -541,9 +708,9 @@ extension ProfileScreen {
             onboardingData.heightUnit = .cm
         }
         
-        // Convert weight (stored in kg) back for calculation
-        if let weightKg = Int(userData.weight) {
-            onboardingData.weightKg = "\(weightKg)"
+        // Convert weight (stored in kg as String with decimals, e.g., "70.3") back for calculation
+        if let weightKg = Double(userData.weight) {
+            onboardingData.weightKg = String(format: "%.1f", weightKg)
             onboardingData.weightUnit = .kg
         }
         
@@ -572,12 +739,12 @@ extension ProfileScreen {
     private func calculateBMI() -> Double? {
         guard !userData.height.isEmpty, !userData.weight.isEmpty,
               let heightCm = Int(userData.height),
-              let weightKg = Int(userData.weight) else {
+              let weightKg = Double(userData.weight) else {
             return nil
         }
         
         let heightInMeters = Double(heightCm) / 100.0
-        let weightInKgDouble = Double(weightKg)
+        let weightInKgDouble = weightKg
         
         guard heightInMeters > 0 else { return nil }
         return weightInKgDouble / (heightInMeters * heightInMeters)
@@ -725,6 +892,51 @@ private struct EditNameView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 isTextFieldFocused = true
             }
+        }
+    }
+}
+
+// MARK: - Forki Toggle Style
+struct ForkiToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 0) {
+            // Toggle track
+            ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                // Background track
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(configuration.isOn ? 
+                          LinearGradient(
+                            colors: [Color(hex: "#8DD4D1"), Color(hex: "#6FB8B5")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                          ) :
+                          LinearGradient(
+                            colors: [ForkiTheme.surface.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                          )
+                    )
+                    .frame(width: 51, height: 31)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(
+                                configuration.isOn ? Color(hex: "#7AB8B5") : ForkiTheme.borderPrimary.opacity(0.3),
+                                lineWidth: configuration.isOn ? 2 : 1
+                            )
+                    )
+                
+                // Toggle thumb
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 27, height: 27)
+                    .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
+                    .padding(.horizontal, 2)
+                    .offset(x: configuration.isOn ? 10 : -10)
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isOn)
+        }
+        .onTapGesture {
+            configuration.isOn.toggle()
         }
     }
 }

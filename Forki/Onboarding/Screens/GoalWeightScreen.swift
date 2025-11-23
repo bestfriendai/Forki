@@ -51,19 +51,33 @@ struct GoalWeightScreen: View {
                             
                             // Option 1: Enter weight
                             VStack(alignment: .leading, spacing: 8) {
-                                TextField("Enter weight", text: $data.goalWeight)
-                                    .font(.system(size: 48, weight: .heavy, design: .rounded))
-                                    .foregroundColor(ForkiTheme.textPrimary)
-                                    .keyboardType(.decimalPad)
-                                    .focused($isGoalWeightFocused)
-                                    .multilineTextAlignment(.center)
-                                    .frame(maxWidth: .infinity)
-                                    .onAppear {
-                                        // Auto-focus goal weight field when screen appears for quick entry
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                ZStack {
+                                    if data.goalWeight.isEmpty {
+                                        Text("Enter weight")
+                                            .font(.system(size: 48, weight: .heavy, design: .rounded))
+                                            .foregroundColor(ForkiTheme.textSecondary.opacity(0.4))
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    
+                                    TextField("", text: $data.goalWeight)
+                                        .font(.system(size: 48, weight: .heavy, design: .rounded))
+                                        .foregroundColor(ForkiTheme.textPrimary)
+                                        .keyboardType(.decimalPad)
+                                        .focused($isGoalWeightFocused)
+                                        .multilineTextAlignment(.center)
+                                        .frame(maxWidth: .infinity)
+                                        .textFieldStyle(PlainTextFieldStyle())
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
                                             isGoalWeightFocused = true
                                         }
+                                }
+                                .onAppear {
+                                    // Auto-focus goal weight field when screen appears for quick entry
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        isGoalWeightFocused = true
                                     }
+                                }
                                 
                                 Text(data.weightUnit.rawValue)
                                     .font(.system(size: 16, weight: .medium, design: .rounded))
